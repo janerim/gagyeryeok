@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "가계력",
+    "slug": "gagyeryeok",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "gagyeryeok",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.ryubi.gagyeryeok",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

@@ -29,3 +29,23 @@ export function dailyTotals(txs: Tx[]): Map<string, Totals> {
   }
   return map;
 }
+
+export type CategoryShare = {
+  categoryId: string | null; // 카테고리 없는 지출은 null
+  amount: number;
+  ratio: number; // 0~1, 전체 지출 대비
+};
+
+/** 카테고리별 지출 합계와 비율, 금액 큰 순. EXPENSE만 집계 */
+export function expenseByCategory(txs: Pick<Transaction, 'type' | 'amount' | 'categoryId'>[]): CategoryShare[] {
+  const map = new Map<string | null, number>();
+  let total = 0;
+  for (const t of txs) {
+    if (t.type !== 'EXPENSE') continue;
+    map.set(t.categoryId, (map.get(t.categoryId) ?? 0) + t.amount);
+    total += t.amount;
+  }
+  return [...map.entries()]
+    .map(([categoryId, amount]) => ({ categoryId, amount, ratio: total ? amount / total : 0 }))
+    .sort((a, b) => b.amount - a.amount);
+}

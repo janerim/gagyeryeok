@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dailyTotals, sumTotals } from './stats';
+import { dailyTotals, expenseByCategory, sumTotals } from './stats';
 
 const tx = (type: 'INCOME' | 'EXPENSE' | 'TRANSFER', amount: number, date = '2026-11-03') => ({
   type,
@@ -31,5 +31,31 @@ describe('dailyTotals', () => {
   it('이체만 있는 날은 빠진다', () => {
     const map = dailyTotals([tx('TRANSFER', 500_000, '2026-11-05')]);
     expect(map.has('2026-11-05')).toBe(false);
+  });
+});
+
+describe('expenseByCategory', () => {
+  const c = (type: 'INCOME' | 'EXPENSE' | 'TRANSFER', amount: number, categoryId: string | null) => ({
+    type,
+    amount,
+    categoryId,
+  });
+
+  it('지출만 카테고리별로 합산, 큰 순', () => {
+    const shares = expenseByCategory([
+      c('EXPENSE', 30_000, 'food'),
+      c('EXPENSE', 10_000, 'cafe'),
+      c('EXPENSE', 60_000, 'food'),
+      c('INCOME', 1_000_000, 'salary'),
+      c('TRANSFER', 500_000, null),
+    ]);
+    expect(shares).toEqual([
+      { categoryId: 'food', amount: 90_000, ratio: 0.9 },
+      { categoryId: 'cafe', amount: 10_000, ratio: 0.1 },
+    ]);
+  });
+
+  it('지출이 없으면 빈 배열', () => {
+    expect(expenseByCategory([c('INCOME', 1000, 'salary')])).toEqual([]);
   });
 });

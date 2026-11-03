@@ -31,14 +31,19 @@ export default function HistoryScreen() {
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [sheet, setSheet] = useState<SheetKind>(null);
 
-  // 계좌 탭에서 계좌를 눌러 들어오면 그 계좌로 필터
-  const { accountId: accountParam } = useLocalSearchParams<{ accountId?: string }>();
+  // 계좌 탭·통계 탭에서 계좌/카테고리를 눌러 들어오면 그것만으로 필터
+  const { accountId: accountParam, categoryId: categoryParam } = useLocalSearchParams<{
+    accountId?: string;
+    categoryId?: string;
+  }>();
   useEffect(() => {
-    if (!accountParam) return;
-    setAccountFilter(accountParam);
-    // 파라미터를 비워 둬야 같은 계좌로 다시 들어와도 필터가 다시 걸린다
-    router.setParams({ accountId: undefined });
-  }, [accountParam]);
+    if (!accountParam && !categoryParam) return;
+    setTypeFilter(null);
+    setAccountFilter(accountParam ?? null);
+    setCategoryFilter(categoryParam ?? null);
+    // 파라미터를 비워 둬야 같은 항목으로 다시 들어와도 필터가 다시 걸린다
+    router.setParams({ accountId: undefined, categoryId: undefined });
+  }, [accountParam, categoryParam]);
 
   useEffect(() => {
     reload().catch(console.error);

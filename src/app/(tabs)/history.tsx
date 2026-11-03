@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { addMonths, format, parseISO } from 'date-fns';
@@ -30,6 +30,15 @@ export default function HistoryScreen() {
   const [accountFilter, setAccountFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [sheet, setSheet] = useState<SheetKind>(null);
+
+  // 계좌 탭에서 계좌를 눌러 들어오면 그 계좌로 필터
+  const { accountId: accountParam } = useLocalSearchParams<{ accountId?: string }>();
+  useEffect(() => {
+    if (!accountParam) return;
+    setAccountFilter(accountParam);
+    // 파라미터를 비워 둬야 같은 계좌로 다시 들어와도 필터가 다시 걸린다
+    router.setParams({ accountId: undefined });
+  }, [accountParam]);
 
   useEffect(() => {
     reload().catch(console.error);

@@ -1,5 +1,6 @@
 import { randomUUID } from 'expo-crypto';
 import { getDB, nowISO } from '@/data/db/database';
+import { EMPTY_SUMS, type AccountSums } from '@/domain/balance';
 import type { Transaction, TransactionInput, TransactionType } from '@/types';
 import type { TransactionRepository } from './TransactionRepository';
 
@@ -136,5 +137,41 @@ export class SqliteTransactionRepository implements TransactionRepository {
       limit
     );
     return rows.map((r) => r.account_id);
+  }
+
+  async sumsByAccount(): Promise<Map<string, AccountSums>> {
+    const db = await getDB();
+    // 출금 쪽(account_id)과 이체 입금 쪽(to_account_id)을 따로 집계해 합친다
+    const rows = await db.getAllAsync<{
+      account_id: string;
+      income: number;
+      expense: number;
+      transfer_in: number;
+      transfer_out: number;
+    }>(
+      `SELECT account_id,
+              SUM(CASE WHEN type = 'INCOME' THEN amount ELSE 0 END) AS income,
+              SUM(CASE WHEN type = 'EXPENSE' THEN amount ELSE 0 END) AS expense,
+              0 AS transfer_in,
+              SUM(CASE WHEN type = 'TRANSFER' THEN amount ELSE 0 END) AS transfer_out
+       FROM "transaction" WHERE deleted_at IS NULL
+       GROUP BY account_id
+       UNION ALL
+       SELECT to_account_id AS account_id, 0, 0, SUM(amount), 0
+       FROM "transaction"
+       WHERE deleted_at IS NULL AND type = 'TRANSFER' AND to_account_id IS NOT NULL
+       GROUP BY to_account_id`
+    );
+    const map = new Map<string, AccountSums>();
+    for (const r of rows) {
+      const prev = map.get(r.account_id) ?? EMPTY_SUMS;
+      map.set(r.account_id, {
+        income: prev.income + r.income,
+        expense: prev.expense + r.expense,
+        transferIn: prev.transferIn + r.transfer_in,
+        transferOut: prev.transferOut + r.transfer_out,
+      });
+    }
+    return map;
   }
 }

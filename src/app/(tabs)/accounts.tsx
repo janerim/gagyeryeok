@@ -1,15 +1,29 @@
+import { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { ACCOUNT_TYPE_LABELS } from '@/constants/labels';
+import { repositories } from '@/data/repositories';
+import { computeBalance, type AccountSums } from '@/domain/balance';
+import { formatWon } from '@/domain/money';
 import { ScreenHeader, headerButtonStyles as hb } from '@/components/common/ScreenHeader';
 import { useShallow } from 'zustand/react/shallow';
 import { selectVisibleAccounts, useAccountStore } from '@/store/accountStore';
+import { useTransactionStore } from '@/store/transactionStore';
 
-/** 계좌 탭. 잔액 표시는 2주차에 추가한다. */
+/** 계좌 탭: 계좌별 현재 잔액. 계좌를 누르면 그 계좌로 필터된 내역 탭으로 이동 */
 export default function AccountsScreen() {
   const accounts = useAccountStore(useShallow(selectVisibleAccounts));
+  // 거래가 추가·수정되면 items가 바뀌므로 잔액도 다시 계산한다
+  const txItems = useTransactionStore((s) => s.items);
+  const [sums, setSums] = useState<Map<string, AccountSums>>(new Map());
+
+  useFocusEffect(
+    useCallback(() => {
+      repositories.transaction.sumsByAccount().then(setSums).catch(console.error);
+    }, [txItems])
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -26,7 +40,10 @@ export default function AccountsScreen() {
         keyExtractor={(a) => a.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
-          <View style={styles.row}>
+          <Pressable
+            onPress={() => router.navigate({ pathname: '/history', params: { accountId: item.id } })}
+            style={({ pressed }) => [styles.row, pressed && { backgroundColor: Colors.surface }]}
+          >
             <View style={{ flex: 1 }}>
               <View style={styles.nameRow}>
                 <Text style={styles.name}>{item.name}</Text>
@@ -38,7 +55,8 @@ export default function AccountsScreen() {
               </View>
               <Text style={styles.type}>{ACCOUNT_TYPE_LABELS[item.type]}</Text>
             </View>
-          </View>
+            <BalanceText amount={computeBalance(item.initialBalance, sums.get(item.id))} />
+          </Pressable>
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -50,6 +68,14 @@ export default function AccountsScreen() {
         }
       />
     </SafeAreaView>
+  );
+}
+
+function BalanceText({ amount }: { amount: number }) {
+  return (
+    <Text style={[styles.balance, amount < 0 && { color: Colors.expense }]}>
+      {formatWon(amount)}원
+    </Text>
   );
 }
 
@@ -73,6 +99,7 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontSize: 12, color: Colors.primaryDark, fontWeight: '600' },
   type: { marginTop: 2, fontSize: 13, color: Colors.textSecondary },
+  balance: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary, marginLeft: 12 },
   empty: { alignItems: 'center', paddingTop: 80, gap: 12 },
   emptyText: { color: Colors.textSecondary, fontSize: 14 },
   emptyBtn: {

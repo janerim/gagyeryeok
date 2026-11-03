@@ -19,6 +19,7 @@ import { Field, inputStyle } from '@/components/common/Field';
 import { orderByRecentUse } from '@/domain/recent';
 import { useRecentUse } from '@/hooks/useRecentUse';
 import { repositories } from '@/data/repositories';
+import { useShallow } from 'zustand/react/shallow';
 import { selectVisibleAccounts, useAccountStore } from '@/store/accountStore';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useTransactionStore } from '@/store/transactionStore';
@@ -34,7 +35,7 @@ export default function TransactionFormScreen() {
   const { id, date: initialDate } = useLocalSearchParams<{ id?: string; date?: string }>();
   const isEdit = !!id;
 
-  const accounts = useAccountStore(selectVisibleAccounts);
+  const accounts = useAccountStore(useShallow(selectVisibleAccounts));
   const categories = useCategoryStore((s) => s.categories);
   const { add, edit, remove } = useTransactionStore();
 

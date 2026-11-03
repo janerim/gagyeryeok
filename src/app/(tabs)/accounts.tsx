@@ -4,11 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { ACCOUNT_TYPE_LABELS } from '@/constants/labels';
 import { ScreenHeader, headerButtonStyles as hb } from '@/components/common/ScreenHeader';
+import { useShallow } from 'zustand/react/shallow';
 import { selectVisibleAccounts, useAccountStore } from '@/store/accountStore';
 
 /** 계좌 탭. 잔액 표시는 2주차에 추가한다. */
 export default function AccountsScreen() {
-  const accounts = useAccountStore(selectVisibleAccounts);
+  const accounts = useAccountStore(useShallow(selectVisibleAccounts));
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>

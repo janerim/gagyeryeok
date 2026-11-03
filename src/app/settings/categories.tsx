@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Colors } from '@/constants/colors';
+import { useShallow } from 'zustand/react/shallow';
 import { selectActiveCategories, useCategoryStore } from '@/store/categoryStore';
 import type { CategoryType } from '@/types';
 
 export default function CategoriesSettingsScreen() {
   const [type, setType] = useState<CategoryType>('EXPENSE');
-  const categories = useCategoryStore(selectActiveCategories(type));
+  const categories = useCategoryStore(useShallow(selectActiveCategories(type)));
   const reorder = useCategoryStore((s) => s.reorder);
 
   const move = (index: number, delta: number) => {

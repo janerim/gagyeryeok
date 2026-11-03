@@ -9,7 +9,9 @@ import { TX_TYPES, TX_TYPE_LABELS } from '@/constants/labels';
 import { MonthNavigator } from '@/components/calendar/MonthNavigator';
 import { PickerSheet } from '@/components/common/PickerSheet';
 import { ScreenHeader, headerButtonStyles as hb } from '@/components/common/ScreenHeader';
+import { TransactionRow } from '@/components/transaction/TransactionRow';
 import { formatWon } from '@/domain/money';
+import { sumTotals } from '@/domain/stats';
 import { useAccountStore } from '@/store/accountStore';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useTransactionStore } from '@/store/transactionStore';
@@ -63,15 +65,7 @@ export default function HistoryScreen() {
     return [...map.entries()].map(([date, data]) => ({ date, data }));
   }, [filtered]);
 
-  const totals = useMemo(() => {
-    let income = 0;
-    let expense = 0;
-    for (const t of filtered) {
-      if (t.type === 'INCOME') income += t.amount;
-      else if (t.type === 'EXPENSE') expense += t.amount;
-    }
-    return { income, expense };
-  }, [filtered]);
+  const totals = useMemo(() => sumTotals(filtered), [filtered]);
 
   const monthDate = parseISO(`${month}-01`);
   const shiftMonth = (d: number) => setMonth(format(addMonths(monthDate, d), 'yyyy-MM'));
@@ -81,24 +75,6 @@ export default function HistoryScreen() {
       { text: '취소', style: 'cancel' },
       { text: '삭제', style: 'destructive', onPress: () => remove(t.id) },
     ]);
-
-  const describe = (t: Transaction) => {
-    if (t.type === 'TRANSFER') {
-      return `${accountName.get(t.accountId) ?? '?'} → ${accountName.get(t.toAccountId ?? '') ?? '?'}`;
-    }
-    const c = t.categoryId ? categoryById.get(t.categoryId) : undefined;
-    return c ? `${c.icon ? c.icon + ' ' : ''}${c.name}` : '카테고리 없음';
-  };
-
-  const amountText = (t: Transaction) => {
-    const n = formatWon(t.amount);
-    if (t.type === 'EXPENSE') return `-${n}`;
-    if (t.type === 'INCOME') return `+${n}`;
-    return n;
-  };
-
-  const amountColor = (t: Transaction) =>
-    t.type === 'EXPENSE' ? Colors.expense : t.type === 'INCOME' ? Colors.income : Colors.transfer;
 
   const filterLabel = (value: string | null, fallback: string, lookup: (v: string) => string) =>
     value ? lookup(value) : fallback;
@@ -173,25 +149,12 @@ export default function HistoryScreen() {
             )}
             overshootRight={false}
           >
-            <Pressable
+            <TransactionRow
+              tx={item}
+              accountName={accountName}
+              categoryById={categoryById}
               onPress={() => router.push({ pathname: '/transaction-form', params: { id: item.id } })}
-              style={({ pressed }) => [styles.row, pressed && { backgroundColor: Colors.surface }]}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowTitle}>{describe(item)}</Text>
-                <Text style={styles.rowSub} numberOfLines={1}>
-                  {[
-                    item.type === 'TRANSFER' ? null : accountName.get(item.accountId) ?? '?',
-                    item.memo,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Text>
-              </View>
-              <Text style={[styles.rowAmount, { color: amountColor(item) }]}>
-                {amountText(item)}
-              </Text>
-            </Pressable>
+            />
           </ReanimatedSwipeable>
         )}
         ListEmptyComponent={
@@ -286,18 +249,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.textSecondary,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: Colors.background,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
-  },
-  rowTitle: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
-  rowSub: { marginTop: 2, fontSize: 12, color: Colors.textSecondary },
-  rowAmount: { fontSize: 16, fontWeight: '700', marginLeft: 12 },
   deleteAction: {
     width: 80,
     backgroundColor: Colors.danger,

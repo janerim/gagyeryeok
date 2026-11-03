@@ -3,24 +3,37 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { parseISO } from 'date-fns';
 import { Colors } from '@/constants/colors';
 import { formatWon } from '@/domain/money';
+import { scheduleLabel } from '@/domain/recurring';
 import { sumTotals } from '@/domain/stats';
-import type { Category, Transaction } from '@/types';
+import type { Category, Recurring, Transaction } from '@/types';
 import { TransactionRow } from './TransactionRow';
 
 type Props = {
   date: string | null; // null이면 닫힘
   items: Transaction[]; // 해당 날짜 거래
+  scheduled?: Recurring[]; // 해당 날짜에 출금 예정인 자동이체 (미래 날짜만)
   accountName: Map<string, string>;
   categoryById: Map<string, Category>;
   onClose: () => void;
   onEdit: (id: string) => void;
   onAdd: (date: string) => void;
+  onEditRecurring?: (id: string) => void;
 };
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 /** 달력에서 날짜를 누르면 올라오는 그날 내역 시트 */
-export function DaySheet({ date, items, accountName, categoryById, onClose, onEdit, onAdd }: Props) {
+export function DaySheet({
+  date,
+  items,
+  scheduled = [],
+  accountName,
+  categoryById,
+  onClose,
+  onEdit,
+  onAdd,
+  onEditRecurring,
+}: Props) {
   // iOS는 시트가 닫히는 도중에 모달 화면을 띄우면 무시되므로, 완전히 닫힌 뒤(onDismiss) 이동한다
   const pending = useRef<(() => void) | null>(null);
   const closeThen = (action: () => void) => {
@@ -74,7 +87,36 @@ export function DaySheet({ date, items, accountName, categoryById, onClose, onEd
                 onPress={() => closeThen(() => onEdit(t.id))}
               />
             ))}
-            {items.length === 0 && <Text style={styles.empty}>내역이 없습니다</Text>}
+            {scheduled.length > 0 && <Text style={styles.scheduledHeader}>예정된 자동이체</Text>}
+            {scheduled.map((r) => (
+              <Pressable
+                key={r.id}
+                onPress={() => onEditRecurring && closeThen(() => onEditRecurring(r.id))}
+                style={({ pressed }) => [styles.scheduledRow, pressed && { backgroundColor: Colors.surface }]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.scheduledName}>{r.name}</Text>
+                  <Text style={styles.scheduledSub}>
+                    {`${scheduleLabel(r)} · ${
+                      r.type === 'TRANSFER'
+                        ? `${accountName.get(r.accountId) ?? '?'} → ${accountName.get(r.toAccountId ?? '') ?? '?'}`
+                        : accountName.get(r.accountId) ?? '?'
+                    }`}
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.scheduledAmount,
+                    { color: r.type === 'EXPENSE' ? Colors.expense : Colors.transfer },
+                  ]}
+                >
+                  {r.type === 'EXPENSE' ? `-${formatWon(r.amount)}` : formatWon(r.amount)}
+                </Text>
+              </Pressable>
+            ))}
+            {items.length === 0 && scheduled.length === 0 && (
+              <Text style={styles.empty}>내역이 없습니다</Text>
+            )}
           </ScrollView>
         </Pressable>
       </Pressable>
@@ -118,4 +160,25 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   empty: { paddingVertical: 28, textAlign: 'center', color: Colors.textSecondary },
+  scheduledHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 4,
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+  },
+  // 아직 일어나지 않은 거래라 흐리게
+  scheduledRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    opacity: 0.5,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border,
+  },
+  scheduledName: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
+  scheduledSub: { marginTop: 2, fontSize: 12, color: Colors.textSecondary },
+  scheduledAmount: { fontSize: 16, fontWeight: '700', marginLeft: 12 },
 });

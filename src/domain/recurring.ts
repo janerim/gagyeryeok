@@ -73,3 +73,16 @@ export function scheduleLabel(r: Pick<Recurring, 'cycle' | 'billingDay' | 'start
   const day = r.billingDay >= 31 ? '말일' : `${r.billingDay}일`;
   return r.cycle === 'MONTHLY' ? `매월 ${day}` : `매년 ${Number(r.startDate.slice(5, 7))}월 ${day}`;
 }
+
+/** from~to 사이 날짜별로 출금 예정인 자동이체. 달력의 "예정" 표시용 */
+export function scheduledByDate<T extends Schedule>(rs: T[], from: string, to: string): Map<string, T[]> {
+  const map = new Map<string, T[]>();
+  for (const r of rs) {
+    for (const d of occurrencesBetween(r, from, to)) {
+      const list = map.get(d);
+      if (list) list.push(r);
+      else map.set(d, [r]);
+    }
+  }
+  return map;
+}

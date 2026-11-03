@@ -6,6 +6,7 @@ import {
   nextOccurrence,
   occurrencesBetween,
   scheduleLabel,
+  scheduledByDate,
 } from './recurring';
 
 const monthly = (billingDay: number, startDate = '2026-01-01', endDate: string | null = null) => ({
@@ -119,5 +120,17 @@ describe('scheduleLabel', () => {
     expect(scheduleLabel(monthly(25))).toBe('매월 25일');
     expect(scheduleLabel(monthly(31))).toBe('매월 말일');
     expect(scheduleLabel({ cycle: 'YEARLY', billingDay: 5, startDate: '2026-03-01' })).toBe('매년 3월 5일');
+  });
+});
+
+describe('scheduledByDate', () => {
+  it('날짜별로 묶는다', () => {
+    const a = { ...monthly(25), id: 'a' };
+    const b = { ...monthly(25), id: 'b' };
+    const c = { ...monthly(10), id: 'c' };
+    const map = scheduledByDate([a, b, c], '2026-11-04', '2026-11-30');
+    expect(map.get('2026-11-25')?.map((r) => r.id)).toEqual(['a', 'b']);
+    expect(map.has('2026-11-10')).toBe(true);
+    expect(map.size).toBe(2);
   });
 });

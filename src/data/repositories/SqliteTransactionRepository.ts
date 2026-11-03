@@ -56,14 +56,14 @@ export class SqliteTransactionRepository implements TransactionRepository {
     return row ? toTransaction(row) : null;
   }
 
-  async create(input: TransactionInput): Promise<Transaction> {
+  async create(input: TransactionInput, recurringId?: string): Promise<Transaction> {
     const db = await getDB();
     const now = nowISO();
     const id = randomUUID();
     await db.runAsync(
       `INSERT INTO "transaction"
          (id, type, amount, date, account_id, to_account_id, category_id, memo, recurring_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       input.type,
       input.amount,
@@ -72,13 +72,14 @@ export class SqliteTransactionRepository implements TransactionRepository {
       input.toAccountId,
       input.categoryId,
       input.memo,
+      recurringId ?? null,
       now,
       now
     );
     return {
       id,
       ...input,
-      recurringId: null,
+      recurringId: recurringId ?? null,
       createdAt: now,
       updatedAt: now,
       deletedAt: null,
@@ -173,5 +174,25 @@ export class SqliteTransactionRepository implements TransactionRepository {
       });
     }
     return map;
+  }
+
+  async recurringDates(recurringId: string): Promise<string[]> {
+    const db = await getDB();
+    const rows = await db.getAllAsync<{ date: string }>(
+      'SELECT date FROM "transaction" WHERE recurring_id = ?',
+      recurringId
+    );
+    return rows.map((r) => r.date);
+  }
+
+  async listByRecurring(recurringId: string): Promise<Transaction[]> {
+    const db = await getDB();
+    const rows = await db.getAllAsync<Row>(
+      `SELECT * FROM "transaction"
+       WHERE recurring_id = ? AND deleted_at IS NULL
+       ORDER BY date`,
+      recurringId
+    );
+    return rows.map(toTransaction);
   }
 }

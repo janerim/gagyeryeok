@@ -1,0 +1,92 @@
+import { create } from 'zustand';
+import { format } from 'date-fns';
+import { repositories } from '@/data/repositories';
+import { dueOccurrences, periodKey } from '@/domain/recurring';
+import type { Recurring, RecurringInput, Transaction } from '@/types';
+import { useTransactionStore } from './transactionStore';
+
+type RecurringStore = {
+  items: Recurring[];
+  loaded: boolean;
+  load: () => Promise<void>;
+  add: (input: RecurringInput) => Promise<void>;
+  edit: (id: string, input: RecurringInput) => Promise<void>;
+  remove: (id: string) => Promise<void>;
+  /** 오늘까지 출금일이 지났는데 아직 거래가 없는 자동이체를 거래로 만든다. 만든 건수 반환 */
+  generateDue: () => Promise<number>;
+  /** 이번 주기(매월: 이번 달, 매년: 올해)에 이 자동이체로 이미 기록된 거래 */
+  currentPeriodTransactions: (r: Recurring) => Promise<Transaction[]>;
+  /** 이미 기록된 거래를 자동이체의 현재 내용으로 맞춘다. 날짜는 그대로 */
+  applyToTransactions: (r: Recurring, txs: Transaction[]) => Promise<void>;
+};
+
+// 앱 시작과 포그라운드 복귀가 겹쳐도 같은 거래를 두 번 만들지 않도록 한 번에 하나만 실행
+let running: Promise<number> | null = null;
+
+export const useRecurringStore = create<RecurringStore>((set, get) => ({
+  items: [],
+  loaded: false,
+  load: async () => {
+    const items = await repositories.recurring.list();
+    set({ items, loaded: true });
+  },
+  add: async (input) => {
+    await repositories.recurring.create(input);
+    await get().load();
+    await get().generateDue();
+  },
+  edit: async (id, input) => {
+    await repositories.recurring.update(id, input);
+    await get().load();
+    await get().generateDue();
+  },
+  remove: async (id) => {
+    await repositories.recurring.softDelete(id);
+    await get().load();
+  },
+  generateDue: () => {
+    if (!running) {
+      running = generate(get().items).finally(() => {
+        running = null;
+      });
+    }
+    return running;
+  },
+  currentPeriodTransactions: async (r) => {
+    const current = periodKey(r.cycle, format(new Date(), 'yyyy-MM-dd'));
+    const txs = await repositories.transaction.listByRecurring(r.id);
+    return txs.filter((t) => periodKey(r.cycle, t.date) === current);
+  },
+  applyToTransactions: async (r, txs) => {
+    for (const t of txs) {
+      await repositories.transaction.update(t.id, toTransactionInput(r, t.date));
+    }
+    await useTransactionStore.getState().reload();
+  },
+}));
+
+function toTransactionInput(r: Recurring, date: string) {
+  return {
+    type: r.type,
+    amount: r.amount,
+    date,
+    accountId: r.accountId,
+    toAccountId: r.type === 'TRANSFER' ? r.toAccountId : null,
+    categoryId: r.type === 'EXPENSE' ? r.categoryId : null,
+    memo: r.name,
+  };
+}
+
+async function generate(items: Recurring[]): Promise<number> {
+  const today = format(new Date(), 'yyyy-MM-dd');
+  let created = 0;
+  for (const r of items) {
+    const generated = await repositories.transaction.recurringDates(r.id);
+    for (const date of dueOccurrences(r, today, generated)) {
+      await repositories.transaction.create(toTransactionInput(r, date), r.id);
+      created++;
+    }
+  }
+  if (created > 0) await useTransactionStore.getState().reload();
+  return created;
+}

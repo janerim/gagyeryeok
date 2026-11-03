@@ -30,9 +30,14 @@ export default function AccountsScreen() {
       <ScreenHeader
         left="계좌"
         right={
-          <Pressable onPress={() => router.push('/settings/accounts')} style={hb.btn}>
-            <Text style={hb.text}>관리</Text>
-          </Pressable>
+          <>
+            <Pressable onPress={() => router.push('/recurring')} style={hb.btn}>
+              <Text style={hb.text}>자동이체</Text>
+            </Pressable>
+            <Pressable onPress={() => router.push('/settings/accounts')} style={hb.btn}>
+              <Text style={hb.text}>관리</Text>
+            </Pressable>
+          </>
         }
       />
       <FlatList

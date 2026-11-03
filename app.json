@@ -24,6 +24,17 @@
     ],
     "experiments": {
       "typedRoutes": false
-    }
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "78d6d32e-1dd2-466e-9446-a3f222719eed"
+      }
+    },
+    "owner": "janerim"
   }
 }

@@ -8,6 +8,10 @@
     "newArchEnabled": true,
     "scheme": "gagyeryeok",
     "ios": {
+      "icon": {
+        "light": "./assets/icon-light.png",
+        "dark": "./assets/icon-dark.png"
+      },
       "supportsTablet": false,
       "bundleIdentifier": "com.ryubi.gagyeryeok",
       "infoPlist": {

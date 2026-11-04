@@ -63,7 +63,7 @@ export default function CalendarScreen() {
         right={
           <>
             <Pressable onPress={() => router.push('/settings')} style={hb.btn}>
-              <Text style={hb.text}>⚙︎</Text>
+              <Text style={[hb.text, styles.gear]}>⚙︎</Text>
             </Pressable>
             <Pressable onPress={() => setMonth(today.slice(0, 7))} style={hb.btn}>
               <Text style={hb.text}>오늘</Text>
@@ -91,6 +91,8 @@ export default function CalendarScreen() {
       <Calendar
         month={month}
         today={today}
+        onSwipeLeft={() => shiftMonth(1)}
+        onSwipeRight={() => shiftMonth(-1)}
         onPressDay={(day) => {
           // 다른 달 날짜를 누르면 그 달로 이동만 한다 (그 달 내역은 아직 안 불러왔으므로)
           if (!day.inMonth) shiftMonth(day.date < `${month}-01` ? -1 : 1);
@@ -157,6 +159,7 @@ function SummaryItem({ label, value, color }: { label: string; value: string; co
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
+  gear: { fontSize: 28, lineHeight: 32 },
   summary: {
     flexDirection: 'row',
     marginHorizontal: 16,

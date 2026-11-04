@@ -5,6 +5,7 @@ import { Colors } from '@/constants/colors';
 const ITEMS = [
   { label: '카테고리 관리', path: '/settings/categories' },
   { label: '계좌 관리', path: '/settings/accounts' },
+  { label: '백업 · 복원', path: '/settings/backup' },
 ] as const;
 
 export default function SettingsScreen() {

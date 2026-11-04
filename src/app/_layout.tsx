@@ -82,6 +82,10 @@ export default function RootLayout() {
             name="settings/accounts"
             options={{ headerShown: true, title: '계좌 관리' }}
           />
+          <Stack.Screen
+            name="settings/backup"
+            options={{ headerShown: true, title: '백업 · 복원' }}
+          />
         </Stack>
       </GestureHandlerRootView>
     </SafeAreaProvider>

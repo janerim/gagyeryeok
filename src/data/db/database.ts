@@ -25,9 +25,20 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
   const current = row?.user_version ?? 0;
   for (let v = current; v < MIGRATIONS.length; v++) {
     await db.withExclusiveTransactionAsync(async (tx) => {
-      await MIGRATIONS[v](tx);
-      await tx.execAsync(`PRAGMA user_version = ${v + 1}`);
+      await applyMigrations(tx, v, v + 1);
     });
+  }
+}
+
+/** 트랜잭션 안에서 from 버전부터 to 버전까지 마이그레이션을 적용한다 */
+export async function applyMigrations(
+  tx: SQLite.SQLiteDatabase,
+  from: number,
+  to: number
+): Promise<void> {
+  for (let v = from; v < to; v++) {
+    await MIGRATIONS[v](tx);
+    await tx.execAsync(`PRAGMA user_version = ${v + 1}`);
   }
 }
 

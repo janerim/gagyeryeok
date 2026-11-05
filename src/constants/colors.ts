@@ -7,11 +7,12 @@ export const Colors = {
   textPrimary: '#1A1A1A',
   textSecondary: '#6B7280',
   border: '#E5E7EB',
-  income: '#3D7EFF',
-  expense: '#FF3B30',
+  // 빨강·파랑은 primary 와 비슷한 채도로 낮춰 둔다 (쨍한 원색은 이 앱의 톤에서 혼자 튄다)
+  income: '#4C84D6',
+  expense: '#E06257',
   transfer: '#8E8E93',
-  saturday: '#3D7EFF',
-  sunday: '#FF3B30',
+  saturday: '#4C84D6',
+  sunday: '#E06257',
   todayBg: '#E3F3EE',
-  danger: '#FF3B30',
+  danger: '#E06257',
 } as const;

@@ -110,6 +110,7 @@ export default function CategoryFormScreen() {
         onSave={onSave}
         saving={saving}
         onDelete={isEdit ? onDelete : undefined}
+        keyboardOpen={keyboard.bottom > 0}
       />
     </View>
   );

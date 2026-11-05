@@ -11,8 +11,9 @@ const MARGIN = 12;
 
 /**
  * 폼 화면에서 키보드가 하단 버튼과 입력칸을 가리지 않게 한다.
- * - bottom: 키보드 높이. 화면 루트의 paddingBottom 으로 주면 스크롤 영역과 하단 버튼이 키보드 위로 올라온다
- *   (폼은 모두 화면 맨 아래까지 닿는 모달이라 키보드 높이를 그대로 쓴다)
+ * - bottom: 키보드 높이. 화면 루트의 paddingBottom 으로 주면 스크롤 영역과 하단 줄이 키보드 위로 올라온다
+ *   (폼은 모두 화면 맨 아래까지 닿는 모달이라 키보드 높이를 그대로 쓴다).
+ *   0 보다 크면 키보드가 떠 있는 것이라, FormFooter 가 저장 버튼 대신 '완료' 줄을 보여준다
  * - scrollRef, onScroll: 폼의 ScrollView 에 연결한다. 포커스된 입력이 가려졌을 때 보이는 데까지 올리는 데 쓴다
  */
 export function useKeyboardInset() {

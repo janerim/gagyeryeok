@@ -72,7 +72,8 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   arrowText: { fontSize: 22, lineHeight: 24, color: Colors.textPrimary },
-  valueBtn: { flex: 1 },
+  // 날짜 글자만큼만 차지해 화살표가 글자에 붙는다. 남는 폭은 오른쪽 '오늘' 앞에 둔다
+  valueBtn: { paddingHorizontal: 4 },
   value: {
     textAlign: 'center',
     fontSize: 15,
@@ -81,6 +82,7 @@ const styles = StyleSheet.create({
   },
   caret: { fontSize: 12, color: Colors.textSecondary },
   todayBtn: {
+    marginLeft: 'auto',
     paddingHorizontal: 10,
     paddingVertical: 9,
     backgroundColor: Colors.surface,

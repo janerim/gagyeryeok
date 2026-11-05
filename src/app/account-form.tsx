@@ -168,6 +168,7 @@ export default function AccountFormScreen() {
         onSave={onSave}
         saving={saving}
         onDelete={isEdit ? () => onDelete().catch(console.error) : undefined}
+        keyboardOpen={keyboard.bottom > 0}
       />
     </View>
   );

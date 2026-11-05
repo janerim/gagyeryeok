@@ -15,13 +15,14 @@ export default function AccountFormScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEdit = !!id;
   const existing = useAccountStore((s) => s.accounts.find((a) => a.id === id));
-  const { add, edit, setHidden, remove } = useAccountStore();
+  const { add, edit, setHidden, setHomeAccount, remove } = useAccountStore();
 
   const [name, setName] = useState('');
   const [type, setType] = useState<AccountType>('CHECKING');
   const [purpose, setPurpose] = useState('');
   const [initialBalance, setInitialBalance] = useState(0);
   const [hidden, setHiddenLocal] = useState(false);
+  const [showOnHome, setShowOnHome] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -31,6 +32,7 @@ export default function AccountFormScreen() {
     setPurpose(existing.purpose ?? '');
     setInitialBalance(existing.initialBalance);
     setHiddenLocal(existing.isHidden);
+    setShowOnHome(existing.showOnHome);
   }, [existing]);
 
   const onSave = async () => {
@@ -46,8 +48,10 @@ export default function AccountFormScreen() {
       if (isEdit && id) {
         await edit(id, input);
         if (existing && existing.isHidden !== hidden) await setHidden(id, hidden);
+        if (existing && existing.showOnHome !== showOnHome) await setHomeAccount(showOnHome ? id : null);
       } else {
-        await add(input);
+        const created = await add(input);
+        if (showOnHome) await setHomeAccount(created.id);
       }
       router.back();
     } catch (e: any) {
@@ -133,9 +137,19 @@ export default function AccountFormScreen() {
           <AmountInput value={initialBalance} onChange={setInitialBalance} />
         </Field>
 
+        <View style={styles.switchRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.switchLabel}>홈에 잔액 표시</Text>
+            <Text style={styles.switchSub}>
+              캘린더 위에 이 계좌의 쓸 수 있는 돈을 보여줍니다. 한 계좌만 켤 수 있어요
+            </Text>
+          </View>
+          <Switch value={showOnHome} onValueChange={setShowOnHome} />
+        </View>
+
         {isEdit && (
           <View style={styles.switchRow}>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.switchLabel}>숨김</Text>
               <Text style={styles.switchSub}>입력 화면과 계좌 목록에서 감춥니다</Text>
             </View>
@@ -163,6 +177,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
     paddingVertical: 8,
   },
   switchLabel: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },

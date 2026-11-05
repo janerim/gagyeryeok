@@ -9,10 +9,13 @@ import { MonthNavigator } from '@/components/calendar/MonthNavigator';
 import { MonthPickerSheet } from '@/components/calendar/MonthPickerSheet';
 import { ScreenHeader, headerButtonStyles as hb } from '@/components/common/ScreenHeader';
 import { DaySheet } from '@/components/transaction/DaySheet';
+import { repositories } from '@/data/repositories';
+import { computeBalance, type AccountSums } from '@/domain/balance';
+import { homeBalance } from '@/domain/homeBalance';
 import { formatWon, formatWonShort } from '@/domain/money';
 import { scheduledByDate } from '@/domain/recurring';
 import { dailyTotals, sumTotals } from '@/domain/stats';
-import { useAccountStore } from '@/store/accountStore';
+import { selectHomeAccount, useAccountStore } from '@/store/accountStore';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useRecurringStore } from '@/store/recurringStore';
 import { useTransactionStore } from '@/store/transactionStore';
@@ -21,14 +24,22 @@ import { useTransactionStore } from '@/store/transactionStore';
 export default function CalendarScreen() {
   const { month, items, setMonth, reload } = useTransactionStore();
   const accounts = useAccountStore((s) => s.accounts);
+  const homeAccount = useAccountStore(selectHomeAccount);
   const categories = useCategoryStore((s) => s.categories);
   const recurrings = useRecurringStore((s) => s.items);
   const [selected, setSelected] = useState<string | null>(null);
   const [monthPicker, setMonthPicker] = useState(false);
+  const [sums, setSums] = useState<Map<string, AccountSums>>(new Map());
 
   useEffect(() => {
     reload().catch(console.error);
   }, [reload]);
+
+  // 홈 계좌 잔액: 거래가 바뀔 때마다(items) 전체 기간 합계를 다시 가져온다
+  useEffect(() => {
+    if (!homeAccount) return;
+    repositories.transaction.sumsByAccount().then(setSums).catch(console.error);
+  }, [items, homeAccount]);
 
   const accountName = useMemo(() => new Map(accounts.map((a) => [a.id, a.name])), [accounts]);
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
@@ -51,6 +62,16 @@ export default function CalendarScreen() {
     return scheduledByDate(recurrings, from, to);
   }, [recurrings, month, today]);
   const net = totals.income - totals.expense;
+
+  // 홈 계좌의 쓸 수 있는 돈. 보고 있는 달과 상관없이 "이번 달" 기준
+  const home = useMemo(() => {
+    if (!homeAccount) return null;
+    const tomorrow = format(addDays(parseISO(today), 1), 'yyyy-MM-dd');
+    const to = format(endOfMonth(parseISO(today)), 'yyyy-MM-dd');
+    const upcoming = [...scheduledByDate(recurrings, tomorrow, to).values()].flat();
+    const balance = computeBalance(homeAccount.initialBalance, sums.get(homeAccount.id));
+    return homeBalance(homeAccount.id, balance, upcoming, today);
+  }, [homeAccount, recurrings, sums, today]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -90,6 +111,29 @@ export default function CalendarScreen() {
           color={Colors.textPrimary}
         />
       </View>
+
+      {home && homeAccount && (
+        <Pressable
+          onPress={() =>
+            router.navigate({ pathname: '/history', params: { accountId: homeAccount.id } })
+          }
+          style={({ pressed }) => [styles.home, pressed && { opacity: 0.7 }]}
+        >
+          <Text style={styles.homeSub}>
+            {homeAccount.name} {formatWon(home.balance)}원
+            {home.scheduledIn - home.scheduledOut !== 0 &&
+              ` · 예정 자동이체 ${signedWon(home.scheduledIn - home.scheduledOut)}`}
+          </Text>
+          <View style={styles.homeRow}>
+            <Text style={styles.homeLine}>
+              쓸 수 있는 <Text style={styles.homeAvailable}>{formatWon(home.available)}원</Text>
+            </Text>
+            <Text style={styles.homeSub}>
+              {home.daysLeft}일 남음 · 하루 {formatWonShort(home.perDay)}
+            </Text>
+          </View>
+        </Pressable>
+      )}
 
       <Calendar
         month={month}
@@ -155,6 +199,8 @@ export default function CalendarScreen() {
   );
 }
 
+const signedWon = (n: number) => `${n < 0 ? '−' : '+'}${formatWon(Math.abs(n))}`;
+
 function SummaryItem({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <View style={styles.summaryItem}>
@@ -178,6 +224,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
   },
   summaryItem: { flex: 1, alignItems: 'center', gap: 2, paddingHorizontal: 4 },
+  home: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: Colors.primaryLight,
+    gap: 2,
+  },
+  homeRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  homeLine: { fontSize: 13, fontWeight: '600', color: Colors.primaryDark },
+  homeAvailable: { fontSize: 17, fontWeight: '800' },
+  homeSub: { fontSize: 12, color: Colors.primaryDark },
   summaryLabel: { fontSize: 12, color: Colors.textSecondary, fontWeight: '600' },
   summaryValue: { fontSize: 15, fontWeight: '700' },
   cellAmount: { fontSize: 10, fontWeight: '600', letterSpacing: -0.3 },

@@ -16,6 +16,7 @@ export type Account = Audit & {
   initialBalance: number;
   sortOrder: number;
   isHidden: boolean;
+  showOnHome: boolean; // 캘린더 위에 이 계좌의 쓸 수 있는 돈을 보여준다 (한 계좌만)
 };
 
 export type AccountInput = {

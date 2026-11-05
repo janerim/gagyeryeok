@@ -100,4 +100,10 @@ export const MIGRATIONS: ((db: SQLiteDatabase) => Promise<void>)[] = [
       await stmt.finalizeAsync();
     }
   },
+  // v2: 홈(캘린더)에 잔액을 보여줄 계좌 표시. 한 계좌만 1
+  async (db) => {
+    await db.execAsync(
+      'ALTER TABLE account ADD COLUMN show_on_home INTEGER NOT NULL DEFAULT 0'
+    );
+  },
 ];

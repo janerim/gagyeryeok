@@ -11,6 +11,7 @@ type Row = {
   initial_balance: number;
   sort_order: number;
   is_hidden: number;
+  show_on_home: number;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -24,6 +25,7 @@ const toAccount = (r: Row): Account => ({
   initialBalance: r.initial_balance,
   sortOrder: r.sort_order,
   isHidden: r.is_hidden === 1,
+  showOnHome: r.show_on_home === 1,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
   deletedAt: r.deleted_at,
@@ -69,6 +71,7 @@ export class SqliteAccountRepository implements AccountRepository {
       ...input,
       sortOrder,
       isHidden: false,
+      showOnHome: false,
       createdAt: now,
       updatedAt: now,
       deletedAt: null,
@@ -97,6 +100,24 @@ export class SqliteAccountRepository implements AccountRepository {
       nowISO(),
       id
     );
+  }
+
+  async setHomeAccount(id: string | null): Promise<void> {
+    const db = await getDB();
+    const now = nowISO();
+    await db.withExclusiveTransactionAsync(async (tx) => {
+      await tx.runAsync(
+        'UPDATE account SET show_on_home = 0, updated_at = ? WHERE show_on_home = 1',
+        now
+      );
+      if (id) {
+        await tx.runAsync(
+          'UPDATE account SET show_on_home = 1, updated_at = ? WHERE id = ?',
+          now,
+          id
+        );
+      }
+    });
   }
 
   async reorder(ids: string[]): Promise<void> {

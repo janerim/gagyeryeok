@@ -10,6 +10,8 @@ export interface AccountRepository {
   create(input: AccountInput): Promise<Account>;
   update(id: string, input: AccountInput): Promise<void>;
   setHidden(id: string, hidden: boolean): Promise<void>;
+  /** 홈에 잔액을 보여줄 계좌를 이것 하나로 정한다. null 이면 아무 계좌도 보여주지 않는다 */
+  setHomeAccount(id: string | null): Promise<void>;
   /** ids 순서대로 sort_order 를 0부터 다시 매긴다 */
   reorder(ids: string[]): Promise<void>;
   references(id: string): Promise<AccountReferences>;

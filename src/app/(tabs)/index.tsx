@@ -6,6 +6,7 @@ import { addDays, addMonths, endOfMonth, format, parseISO } from 'date-fns';
 import { Colors } from '@/constants/colors';
 import { Calendar } from '@/components/calendar/Calendar';
 import { MonthNavigator } from '@/components/calendar/MonthNavigator';
+import { MonthPickerSheet } from '@/components/calendar/MonthPickerSheet';
 import { ScreenHeader, headerButtonStyles as hb } from '@/components/common/ScreenHeader';
 import { DaySheet } from '@/components/transaction/DaySheet';
 import { formatWon, formatWonShort } from '@/domain/money';
@@ -23,6 +24,7 @@ export default function CalendarScreen() {
   const categories = useCategoryStore((s) => s.categories);
   const recurrings = useRecurringStore((s) => s.items);
   const [selected, setSelected] = useState<string | null>(null);
+  const [monthPicker, setMonthPicker] = useState(false);
 
   useEffect(() => {
     reload().catch(console.error);
@@ -58,6 +60,7 @@ export default function CalendarScreen() {
             date={monthDate}
             onPrev={() => shiftMonth(-1)}
             onNext={() => shiftMonth(1)}
+            onPressLabel={() => setMonthPicker(true)}
           />
         }
         right={
@@ -131,6 +134,12 @@ export default function CalendarScreen() {
         }}
       />
 
+      <MonthPickerSheet
+        visible={monthPicker}
+        month={month}
+        onSelect={(m) => setMonth(m).catch(console.error)}
+        onClose={() => setMonthPicker(false)}
+      />
       <DaySheet
         date={selected}
         items={selectedItems}

@@ -16,6 +16,7 @@ import { AmountInput } from '@/components/common/AmountInput';
 import { Chip } from '@/components/common/Chip';
 import { DateStepper } from '@/components/common/DateStepper';
 import { Field, inputStyle } from '@/components/common/Field';
+import { FormFooter } from '@/components/common/FormFooter';
 import { orderByRecentUse } from '@/domain/recent';
 import { useRecentUse } from '@/hooks/useRecentUse';
 import { repositories } from '@/data/repositories';
@@ -206,26 +207,17 @@ export default function TransactionFormScreen() {
           </Field>
         )}
 
-        <Field label="날짜">
+        <Field label="날짜" inline>
           <DateStepper value={date} onChange={setDate} />
         </Field>
-
-        {isEdit && (
-          <Pressable onPress={onDelete} style={styles.deleteBtn}>
-            <Text style={styles.deleteText}>삭제</Text>
-          </Pressable>
-        )}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <Pressable
-          onPress={onSave}
-          disabled={saving}
-          style={[styles.primaryBtn, styles.saveBtn, saving && { opacity: 0.5 }]}
-        >
-          <Text style={styles.primaryBtnText}>{isEdit ? '수정' : '저장'}</Text>
-        </Pressable>
-      </View>
+      <FormFooter
+        saveLabel={isEdit ? '수정' : '저장'}
+        onSave={onSave}
+        saving={saving}
+        onDelete={isEdit ? onDelete : undefined}
+      />
     </View>
   );
 }
@@ -276,12 +268,6 @@ const styles = StyleSheet.create({
   segmentTextOn: { color: '#fff' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   link: { color: Colors.primary, fontSize: 14, paddingVertical: 8 },
-  footer: {
-    padding: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.border,
-    backgroundColor: Colors.background,
-  },
   primaryBtn: {
     paddingHorizontal: 20,
     paddingVertical: 12,
@@ -289,8 +275,5 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     alignItems: 'center',
   },
-  saveBtn: { paddingVertical: 14 },
   primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  deleteBtn: { alignItems: 'center', paddingVertical: 12 },
-  deleteText: { color: Colors.danger, fontSize: 15, fontWeight: '600' },
 });

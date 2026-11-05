@@ -8,6 +8,7 @@ import { AmountInput } from '@/components/common/AmountInput';
 import { Chip } from '@/components/common/Chip';
 import { DateStepper } from '@/components/common/DateStepper';
 import { Field, inputStyle } from '@/components/common/Field';
+import { FormFooter } from '@/components/common/FormFooter';
 import { nextOccurrence, scheduleLabel } from '@/domain/recurring';
 import { selectVisibleAccounts, useAccountStore } from '@/store/accountStore';
 import { selectActiveCategories, useCategoryStore } from '@/store/categoryStore';
@@ -275,22 +276,14 @@ export default function RecurringFormScreen() {
           </View>
         )}
 
-        {isEdit && (
-          <Pressable onPress={onDelete} style={styles.deleteBtn}>
-            <Text style={styles.deleteText}>삭제</Text>
-          </Pressable>
-        )}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <Pressable
-          onPress={onSave}
-          disabled={saving}
-          style={[styles.saveBtn, saving && { opacity: 0.5 }]}
-        >
-          <Text style={styles.saveText}>{isEdit ? '수정' : '저장'}</Text>
-        </Pressable>
-      </View>
+      <FormFooter
+        saveLabel={isEdit ? '수정' : '저장'}
+        onSave={onSave}
+        saving={saving}
+        onDelete={isEdit ? onDelete : undefined}
+      />
     </View>
   );
 }
@@ -308,14 +301,6 @@ const styles = StyleSheet.create({
   preview: { padding: 14, borderRadius: 10, backgroundColor: Colors.primaryLight, gap: 4 },
   previewText: { fontSize: 14, fontWeight: '700', color: Colors.primaryDark },
   previewSub: { fontSize: 12, color: Colors.primaryDark },
-  deleteBtn: { alignItems: 'center', paddingVertical: 12 },
-  deleteText: { color: Colors.danger, fontSize: 15, fontWeight: '600' },
-  footer: {
-    padding: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.border,
-    backgroundColor: Colors.background,
-  },
   saveBtn: {
     paddingHorizontal: 20,
     paddingVertical: 14,

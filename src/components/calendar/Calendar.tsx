@@ -7,6 +7,8 @@ import { buildMonthGrid, type CalendarDay } from '@/domain/calendar';
 type Props = {
   month: string; // YYYY-MM
   today: string; // YYYY-MM-DD
+  /** 날짜 선택용으로 쓸 때 테두리로 표시할 날짜 */
+  selected?: string;
   onPressDay: (day: CalendarDay) => void;
   /** 날짜 숫자 아래 내용. 앱마다 다른 부분이라 밖에서 주입한다 */
   renderDay?: (day: CalendarDay) => ReactNode;
@@ -20,7 +22,15 @@ const weekdayColor = (weekday: number) =>
   weekday === 6 ? Colors.saturday : weekday === 0 ? Colors.sunday : Colors.textPrimary;
 
 /** 월요일 시작 달력 그리드. 토요일 파랑, 일요일 빨강, 오늘 하이라이트 (책력과 동일) */
-export function Calendar({ month, today, onPressDay, renderDay, onSwipeLeft, onSwipeRight }: Props) {
+export function Calendar({
+  month,
+  today,
+  selected,
+  onPressDay,
+  renderDay,
+  onSwipeLeft,
+  onSwipeRight,
+}: Props) {
   const weeks = buildMonthGrid(month);
 
   // 책력과 같은 기준: 가로로 50 이상 밀면 달 이동, 세로로 먼저 움직이면 무시
@@ -47,6 +57,7 @@ export function Calendar({ month, today, onPressDay, renderDay, onSwipeLeft, onS
           <View key={week[0].date} style={styles.week}>
             {week.map((day) => {
               const isToday = day.date === today;
+              const isSelected = day.date === selected;
               return (
                 <Pressable
                   key={day.date}
@@ -54,6 +65,7 @@ export function Calendar({ month, today, onPressDay, renderDay, onSwipeLeft, onS
                   style={({ pressed }) => [
                     styles.cell,
                     isToday && styles.todayCell,
+                    isSelected && styles.selectedCell,
                     pressed && { backgroundColor: Colors.surface },
                   ]}
                 >
@@ -62,7 +74,7 @@ export function Calendar({ month, today, onPressDay, renderDay, onSwipeLeft, onS
                       styles.dayNum,
                       { color: weekdayColor(day.weekday) },
                       !day.inMonth && styles.outOfMonth,
-                      isToday && styles.todayNum,
+                      (isToday || isSelected) && styles.todayNum,
                     ]}
                   >
                     {day.day}
@@ -95,6 +107,7 @@ const styles = StyleSheet.create({
   },
   cell: { flex: 1, alignItems: 'center', paddingTop: 6, gap: 2, borderRadius: 8 },
   todayCell: { backgroundColor: Colors.todayBg },
+  selectedCell: { borderWidth: 1.5, borderColor: Colors.primary },
   dayNum: { fontSize: 13, fontWeight: '600' },
   todayNum: { color: Colors.primaryDark, fontWeight: '800' },
   outOfMonth: { opacity: 0.3 },

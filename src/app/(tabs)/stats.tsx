@@ -1,11 +1,12 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { addMonths, format, parseISO } from 'date-fns';
 import { Colors } from '@/constants/colors';
 import { MonthNavigator } from '@/components/calendar/MonthNavigator';
-import { ScreenHeader } from '@/components/common/ScreenHeader';
+import { MonthPickerSheet } from '@/components/calendar/MonthPickerSheet';
+import { ScreenHeader, headerButtonStyles as hb } from '@/components/common/ScreenHeader';
 import { formatWon } from '@/domain/money';
 import { expenseByCategory, sumTotals } from '@/domain/stats';
 import { useCategoryStore } from '@/store/categoryStore';
@@ -28,6 +29,7 @@ export default function StatsScreen() {
   const shiftMonth = (d: number) => setMonth(format(addMonths(monthDate, d), 'yyyy-MM'));
   const net = totals.income - totals.expense;
   const maxAmount = shares[0]?.amount ?? 0;
+  const [monthPicker, setMonthPicker] = useState(false);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -37,8 +39,20 @@ export default function StatsScreen() {
             date={monthDate}
             onPrev={() => shiftMonth(-1)}
             onNext={() => shiftMonth(1)}
+            onPressLabel={() => setMonthPicker(true)}
           />
         }
+        right={
+          <Pressable onPress={() => setMonth(format(new Date(), 'yyyy-MM'))} style={hb.btn}>
+            <Text style={hb.text}>이번 달</Text>
+          </Pressable>
+        }
+      />
+      <MonthPickerSheet
+        visible={monthPicker}
+        month={month}
+        onSelect={(m) => setMonth(m).catch(console.error)}
+        onClose={() => setMonthPicker(false)}
       />
 
       <ScrollView contentContainerStyle={styles.content}>

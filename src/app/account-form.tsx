@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABELS } from '@/constants/labels';
 import { AmountInput } from '@/components/common/AmountInput';
 import { Chip } from '@/components/common/Chip';
 import { Field, inputStyle } from '@/components/common/Field';
+import { FormFooter } from '@/components/common/FormFooter';
 import { repositories } from '@/data/repositories';
 import { useAccountStore } from '@/store/accountStore';
 import type { AccountType } from '@/types';
@@ -142,22 +143,14 @@ export default function AccountFormScreen() {
           </View>
         )}
 
-        {isEdit && (
-          <Pressable onPress={() => onDelete().catch(console.error)} style={styles.deleteBtn}>
-            <Text style={styles.deleteText}>삭제</Text>
-          </Pressable>
-        )}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <Pressable
-          onPress={onSave}
-          disabled={saving}
-          style={[styles.saveBtn, saving && { opacity: 0.5 }]}
-        >
-          <Text style={styles.saveText}>{isEdit ? '수정' : '저장'}</Text>
-        </Pressable>
-      </View>
+      <FormFooter
+        saveLabel={isEdit ? '수정' : '저장'}
+        onSave={onSave}
+        saving={saving}
+        onDelete={isEdit ? () => onDelete().catch(console.error) : undefined}
+      />
     </View>
   );
 }
@@ -174,18 +167,4 @@ const styles = StyleSheet.create({
   },
   switchLabel: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
   switchSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  footer: {
-    padding: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.border,
-  },
-  saveBtn: {
-    paddingVertical: 14,
-    borderRadius: 10,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-  },
-  saveText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  deleteBtn: { alignItems: 'center', paddingVertical: 12 },
-  deleteText: { color: Colors.danger, fontSize: 15, fontWeight: '600' },
 });

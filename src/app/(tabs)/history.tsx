@@ -7,6 +7,7 @@ import { addMonths, format, parseISO } from 'date-fns';
 import { Colors } from '@/constants/colors';
 import { TX_TYPES, TX_TYPE_LABELS } from '@/constants/labels';
 import { MonthNavigator } from '@/components/calendar/MonthNavigator';
+import { MonthPickerSheet } from '@/components/calendar/MonthPickerSheet';
 import { PickerSheet } from '@/components/common/PickerSheet';
 import { ScreenHeader, headerButtonStyles as hb } from '@/components/common/ScreenHeader';
 import { TransactionRow } from '@/components/transaction/TransactionRow';
@@ -30,6 +31,13 @@ export default function HistoryScreen() {
   const [accountFilter, setAccountFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [sheet, setSheet] = useState<SheetKind>(null);
+  const [monthPicker, setMonthPicker] = useState(false);
+  const hasFilter = !!(typeFilter || accountFilter || categoryFilter);
+  const clearFilters = () => {
+    setTypeFilter(null);
+    setAccountFilter(null);
+    setCategoryFilter(null);
+  };
 
   // 계좌 탭·통계 탭에서 계좌/카테고리를 눌러 들어오면 그것만으로 필터
   const { accountId: accountParam, categoryId: categoryParam } = useLocalSearchParams<{
@@ -101,15 +109,21 @@ export default function HistoryScreen() {
             date={monthDate}
             onPrev={() => shiftMonth(-1)}
             onNext={() => shiftMonth(1)}
+            onPressLabel={() => setMonthPicker(true)}
           />
         }
         right={
-          <Pressable
-            onPress={() => router.push('/transaction-form')}
-            style={[hb.btn, hb.btnPrimary]}
-          >
-            <Text style={hb.textPrimary}>+</Text>
-          </Pressable>
+          <>
+            <Pressable onPress={() => setMonth(format(new Date(), 'yyyy-MM'))} style={hb.btn}>
+              <Text style={hb.text}>이번 달</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/transaction-form')}
+              style={[hb.btn, hb.btnPrimary]}
+            >
+              <Text style={hb.textPrimary}>+</Text>
+            </Pressable>
+          </>
         }
       />
 
@@ -129,6 +143,11 @@ export default function HistoryScreen() {
           active={!!categoryFilter}
           onPress={() => setSheet('category')}
         />
+        {hasFilter && (
+          <Pressable onPress={clearFilters} style={styles.resetBtn} hitSlop={6}>
+            <Text style={styles.resetText}>✕</Text>
+          </Pressable>
+        )}
       </View>
 
       <View style={styles.summary}>
@@ -180,6 +199,12 @@ export default function HistoryScreen() {
         }
       />
 
+      <MonthPickerSheet
+        visible={monthPicker}
+        month={month}
+        onSelect={(m) => setMonth(m).catch(console.error)}
+        onClose={() => setMonthPicker(false)}
+      />
       <PickerSheet
         visible={sheet === 'type'}
         title="유형"
@@ -246,6 +271,14 @@ const styles = StyleSheet.create({
   filterBtnActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },
   filterText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '600' },
   filterTextActive: { color: Colors.primaryDark },
+  resetBtn: {
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  resetText: { fontSize: 13, fontWeight: '700', color: Colors.textSecondary },
   summary: {
     flexDirection: 'row',
     justifyContent: 'space-between',

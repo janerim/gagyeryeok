@@ -12,6 +12,8 @@ type Props = {
   onPressDay: (day: CalendarDay) => void;
   /** 날짜 숫자 아래 내용. 앱마다 다른 부분이라 밖에서 주입한다 */
   renderDay?: (day: CalendarDay) => ReactNode;
+  /** 주 행 오른쪽 열 내용 (주간 합계 등). 있으면 8번째 열이 생긴다 */
+  renderWeek?: (week: CalendarDay[]) => ReactNode;
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
 };
@@ -28,6 +30,7 @@ export function Calendar({
   selected,
   onPressDay,
   renderDay,
+  renderWeek,
   onSwipeLeft,
   onSwipeRight,
 }: Props) {
@@ -52,6 +55,7 @@ export function Calendar({
               {label}
             </Text>
           ))}
+          {renderWeek && <Text style={[styles.weekLabel, styles.weekColHeader]}>주</Text>}
         </View>
         {weeks.map((week) => (
           <View key={week[0].date} style={styles.week}>
@@ -83,6 +87,7 @@ export function Calendar({
                 </Pressable>
               );
             })}
+            {renderWeek && <View style={styles.weekCol}>{renderWeek(week)}</View>}
           </View>
         ))}
       </View>
@@ -106,6 +111,15 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   cell: { flex: 1, alignItems: 'center', paddingTop: 6, gap: 2, borderRadius: 8 },
+  // 주간 합계 열. 날짜 칸보다 좁게 고정해 7칸을 덜 줄인다
+  weekColHeader: { flex: 0, width: 46, color: Colors.textSecondary },
+  weekCol: {
+    width: 46,
+    alignItems: 'center',
+    paddingTop: 6,
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderLeftColor: Colors.border,
+  },
   todayCell: { backgroundColor: Colors.todayBg },
   selectedCell: { borderWidth: 1.5, borderColor: Colors.primary },
   dayNum: { fontSize: 13, fontWeight: '600' },

@@ -145,6 +145,16 @@ export default function CalendarScreen() {
           if (!day.inMonth) shiftMonth(day.date < `${month}-01` ? -1 : 1);
           else setSelected(day.date);
         }}
+        renderWeek={(week) => {
+          // 그 주의 실제 지출 합계. 예정 자동이체는 넣지 않는다
+          const expense = week.reduce((sum, d) => sum + (byDay.get(d.date)?.expense ?? 0), 0);
+          if (expense === 0) return null;
+          return (
+            <Text style={[styles.cellAmount, styles.weekAmount]} numberOfLines={1}>
+              {`-${formatWonShort(expense)}`}
+            </Text>
+          );
+        }}
         renderDay={(day) => {
           if (!day.inMonth) return null;
           const t = byDay.get(day.date);
@@ -240,5 +250,6 @@ const styles = StyleSheet.create({
   summaryLabel: { fontSize: 12, color: Colors.textSecondary, fontWeight: '600' },
   summaryValue: { fontSize: 15, fontWeight: '700' },
   cellAmount: { fontSize: 10, fontWeight: '600', letterSpacing: -0.3 },
+  weekAmount: { color: Colors.expense, fontWeight: '700', paddingTop: 1 },
   planned: { opacity: 0.4 },
 });

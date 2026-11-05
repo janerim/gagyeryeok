@@ -248,7 +248,6 @@ function AccountChips({
           label={a.name}
           selected={a.id === selectedId}
           onPress={() => onSelect(a.id)}
-          color={a.type === 'CARD' ? Colors.card : undefined}
           tinted={a.type === 'CARD'}
         />
       ))}

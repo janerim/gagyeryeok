@@ -8,6 +8,7 @@ import { Chip } from '@/components/common/Chip';
 import { Field, inputStyle } from '@/components/common/Field';
 import { FormFooter } from '@/components/common/FormFooter';
 import { repositories } from '@/data/repositories';
+import { useKeyboardInset } from '@/hooks/useKeyboardInset';
 import { useAccountStore } from '@/store/accountStore';
 import type { AccountType } from '@/types';
 
@@ -24,6 +25,7 @@ export default function AccountFormScreen() {
   const [hidden, setHiddenLocal] = useState(false);
   const [showOnHome, setShowOnHome] = useState(false);
   const [saving, setSaving] = useState(false);
+  const keyboard = useKeyboardInset();
 
   useEffect(() => {
     if (!existing) return;
@@ -93,11 +95,13 @@ export default function AccountFormScreen() {
   };
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { paddingBottom: keyboard.bottom }]}>
       <ScrollView
+        ref={keyboard.scrollRef}
+        onScroll={keyboard.onScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
-        automaticallyAdjustKeyboardInsets
       >
         <Field label="이름">
           <TextInput

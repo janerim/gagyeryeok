@@ -19,7 +19,10 @@ export default function RecurringScreen() {
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
 
   const today = format(new Date(), 'yyyy-MM-dd');
-  const total = monthTotal(items, today.slice(0, 7));
+  // 나가는 돈(지출·이체)과 들어오는 돈(수입)은 따로 합산한다
+  const month = today.slice(0, 7);
+  const total = monthTotal(items.filter((r) => r.type !== 'INCOME'), month);
+  const incomeTotal = monthTotal(items.filter((r) => r.type === 'INCOME'), month);
 
   const accountText = (r: (typeof items)[number]) =>
     r.type === 'TRANSFER'
@@ -29,8 +32,18 @@ export default function RecurringScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.summary}>
-        <Text style={styles.summaryLabel}>이번 달 자동이체</Text>
-        <Text style={styles.summaryValue}>{formatWon(total)}원</Text>
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>이번 달 자동이체</Text>
+          <Text style={styles.summaryValue}>{formatWon(total)}원</Text>
+        </View>
+        {incomeTotal > 0 && (
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>이번 달 자동 입금</Text>
+            <Text style={[styles.summaryValue, { color: Colors.income }]}>
+              +{formatWon(incomeTotal)}원
+            </Text>
+          </View>
+        )}
       </View>
 
       <FlatList
@@ -57,9 +70,17 @@ export default function RecurringScreen() {
                 <Text
                   style={[
                     styles.amount,
-                    { color: item.type === 'EXPENSE' ? Colors.expense : Colors.transfer },
+                    {
+                      color:
+                        item.type === 'EXPENSE'
+                          ? Colors.expense
+                          : item.type === 'INCOME'
+                            ? Colors.income
+                            : Colors.transfer,
+                    },
                   ]}
                 >
+                  {item.type === 'INCOME' ? '+' : ''}
                   {formatWon(item.amount)}
                 </Text>
                 <Text style={styles.next}>
@@ -89,14 +110,13 @@ export default function RecurringScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.background },
   summary: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     margin: 16,
     padding: 14,
     borderRadius: 12,
     backgroundColor: Colors.surface,
+    gap: 8,
   },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   summaryLabel: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
   summaryValue: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
   row: {

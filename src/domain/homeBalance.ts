@@ -4,7 +4,7 @@ import type { Recurring } from '@/types';
 export type HomeBalance = {
   balance: number; // 지금 잔액
   scheduledOut: number; // 이번 달 남은 예정 출금 (지출 + 이체 출금)
-  scheduledIn: number; // 이번 달 남은 예정 입금 (다른 계좌에서 오는 이체)
+  scheduledIn: number; // 이번 달 남은 예정 입금 (수입 + 다른 계좌에서 오는 이체)
   available: number; // 잔액 − 예정 출금 + 예정 입금
   daysLeft: number; // 오늘 포함, 이번 달 말일까지
   perDay: number; // 하루에 쓸 수 있는 돈. 쓸 수 있는 돈이 없으면 0
@@ -25,7 +25,10 @@ export function homeBalance(
   let scheduledOut = 0;
   let scheduledIn = 0;
   for (const r of scheduled) {
-    if (r.accountId === accountId) scheduledOut += r.amount;
+    // 수입형은 accountId 가 입금 계좌다
+    if (r.type === 'INCOME') {
+      if (r.accountId === accountId) scheduledIn += r.amount;
+    } else if (r.accountId === accountId) scheduledOut += r.amount;
     else if (r.type === 'TRANSFER' && r.toAccountId === accountId) scheduledIn += r.amount;
   }
   const available = balance - scheduledOut + scheduledIn;

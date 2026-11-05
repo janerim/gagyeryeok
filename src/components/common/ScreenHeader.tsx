@@ -28,9 +28,10 @@ export const headerButtonStyles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: Colors.surface,
   },
+  /** 아이콘만 있는 버튼. 좁은 화면(375pt)에서 헤더가 넘치지 않도록 정사각형으로 고정 */
+  iconBtn: { width: 36, paddingHorizontal: 0 },
   btnPrimary: { backgroundColor: Colors.primary },
   text: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-  textPrimary: { fontSize: 24, lineHeight: 26, fontWeight: '400', color: '#fff' },
 });
 
 const styles = StyleSheet.create({

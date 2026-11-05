@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { Ionicons } from '@expo/vector-icons';
 import { addMonths, format, parseISO } from 'date-fns';
 import { Colors } from '@/constants/colors';
 import { TX_TYPES, TX_TYPE_LABELS } from '@/constants/labels';
@@ -30,13 +31,16 @@ export default function HistoryScreen() {
   const [typeFilter, setTypeFilter] = useState<TransactionType | null>(null);
   const [accountFilter, setAccountFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [query, setQuery] = useState(''); // 메모 검색어. 보고 있는 달 안에서만 찾는다
   const [sheet, setSheet] = useState<SheetKind>(null);
   const [monthPicker, setMonthPicker] = useState(false);
-  const hasFilter = !!(typeFilter || accountFilter || categoryFilter);
+  const keyword = query.trim().toLowerCase();
+  const hasFilter = !!(typeFilter || accountFilter || categoryFilter || keyword);
   const clearFilters = () => {
     setTypeFilter(null);
     setAccountFilter(null);
     setCategoryFilter(null);
+    setQuery('');
   };
 
   // 계좌 탭·통계 탭에서 계좌/카테고리를 눌러 들어오면 그것만으로 필터
@@ -73,9 +77,10 @@ export default function HistoryScreen() {
         if (accountFilter && t.accountId !== accountFilter && t.toAccountId !== accountFilter)
           return false;
         if (categoryFilter && t.categoryId !== categoryFilter) return false;
+        if (keyword && !(t.memo ?? '').toLowerCase().includes(keyword)) return false;
         return true;
       }),
-    [items, typeFilter, accountFilter, categoryFilter]
+    [items, typeFilter, accountFilter, categoryFilter, keyword]
   );
 
   const sections = useMemo(() => {
@@ -92,9 +97,10 @@ export default function HistoryScreen() {
   const monthDate = parseISO(`${month}-01`);
   const shiftMonth = (d: number) => setMonth(format(addMonths(monthDate, d), 'yyyy-MM'));
 
-  const confirmDelete = (t: Transaction) =>
+  // 취소하면 밀어서 열린 줄을 다시 닫는다
+  const confirmDelete = (t: Transaction, close: () => void) =>
     Alert.alert('삭제', '이 거래를 삭제할까요?', [
-      { text: '취소', style: 'cancel' },
+      { text: '취소', style: 'cancel', onPress: close },
       { text: '삭제', style: 'destructive', onPress: () => remove(t.id) },
     ]);
 
@@ -119,9 +125,11 @@ export default function HistoryScreen() {
             </Pressable>
             <Pressable
               onPress={() => router.push('/transaction-form')}
-              style={[hb.btn, hb.btnPrimary]}
+              style={[hb.btn, hb.iconBtn, hb.btnPrimary]}
+              accessibilityRole="button"
+              accessibilityLabel="거래 추가"
             >
-              <Text style={hb.textPrimary}>+</Text>
+              <Ionicons name="add" size={24} color="#fff" />
             </Pressable>
           </>
         }
@@ -144,10 +152,30 @@ export default function HistoryScreen() {
           onPress={() => setSheet('category')}
         />
         {hasFilter && (
-          <Pressable onPress={clearFilters} style={styles.resetBtn} hitSlop={6}>
+          <Pressable
+            onPress={clearFilters}
+            style={styles.resetBtn}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel="필터 초기화"
+          >
             <Text style={styles.resetText}>✕</Text>
           </Pressable>
         )}
+      </View>
+
+      <View style={styles.searchRow}>
+        <TextInput
+          style={styles.search}
+          value={query}
+          onChangeText={setQuery}
+          placeholder="메모 검색"
+          placeholderTextColor={Colors.textSecondary}
+          clearButtonMode="while-editing"
+          returnKeyType="search"
+          autoCorrect={false}
+          autoCapitalize="none"
+        />
       </View>
 
       <View style={styles.summary}>
@@ -165,18 +193,36 @@ export default function HistoryScreen() {
         keyExtractor={(t) => t.id}
         stickySectionHeadersEnabled={false}
         contentContainerStyle={styles.list}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
         renderSectionHeader={({ section }) => {
           const d = parseISO(section.date);
+          // 그날 합계. 필터·검색이 걸려 있으면 보이는 거래만 더한다
+          const day = sumTotals(section.data);
           return (
-            <Text style={styles.sectionHeader}>
-              {`${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAYS[d.getDay()]})`}
-            </Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>
+                {`${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAYS[d.getDay()]})`}
+              </Text>
+              <Text style={styles.sectionTotals}>
+                {day.income > 0 && (
+                  <Text style={{ color: Colors.income }}>{`+${formatWon(day.income)}`}</Text>
+                )}
+                {day.income > 0 && day.expense > 0 && '  '}
+                {day.expense > 0 && (
+                  <Text style={{ color: Colors.expense }}>{`-${formatWon(day.expense)}`}</Text>
+                )}
+              </Text>
+            </View>
           );
         }}
         renderItem={({ item }) => (
           <ReanimatedSwipeable
-            renderRightActions={() => (
-              <Pressable onPress={() => confirmDelete(item)} style={styles.deleteAction}>
+            renderRightActions={(_progress, _translation, swipeable) => (
+              <Pressable
+                onPress={() => confirmDelete(item, swipeable.close)}
+                style={styles.deleteAction}
+              >
                 <Text style={styles.deleteActionText}>삭제</Text>
               </Pressable>
             )}
@@ -193,7 +239,7 @@ export default function HistoryScreen() {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyText}>
-              {items.length === 0 ? '이번 달 내역이 없습니다.' : '필터에 맞는 내역이 없습니다.'}
+              {items.length === 0 ? '이번 달 내역이 없습니다.' : '조건에 맞는 내역이 없습니다.'}
             </Text>
           </View>
         }
@@ -248,7 +294,12 @@ function FilterButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={[styles.filterBtn, active && styles.filterBtnActive]}>
+    <Pressable
+      onPress={onPress}
+      style={[styles.filterBtn, active && styles.filterBtnActive]}
+      accessibilityRole="button"
+      accessibilityLabel={`${label} 필터`}
+    >
       <Text style={[styles.filterText, active && styles.filterTextActive]} numberOfLines={1}>
         {label} ▾
       </Text>
@@ -279,6 +330,16 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   resetText: { fontSize: 13, fontWeight: '700', color: Colors.textSecondary },
+  searchRow: { paddingHorizontal: 16, paddingBottom: 8 },
+  search: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: Colors.textPrimary,
+  },
   summary: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -289,13 +350,15 @@ const styles = StyleSheet.create({
   summaryText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '600' },
   list: { paddingBottom: 24 },
   sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 6,
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.textSecondary,
   },
+  sectionTitle: { fontSize: 13, fontWeight: '700', color: Colors.textSecondary },
+  sectionTotals: { fontSize: 12, fontWeight: '600' },
   deleteAction: {
     width: 80,
     backgroundColor: Colors.danger,

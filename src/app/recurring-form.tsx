@@ -10,6 +10,7 @@ import { DateStepper } from '@/components/common/DateStepper';
 import { Field, inputStyle } from '@/components/common/Field';
 import { FormFooter } from '@/components/common/FormFooter';
 import { nextOccurrence, scheduleLabel } from '@/domain/recurring';
+import { useKeyboardInset } from '@/hooks/useKeyboardInset';
 import { selectVisibleAccounts, useAccountStore } from '@/store/accountStore';
 import { selectActiveCategories, useCategoryStore } from '@/store/categoryStore';
 import { useRecurringStore } from '@/store/recurringStore';
@@ -17,6 +18,7 @@ import type { RecurringCycle, RecurringInput, RecurringType } from '@/types';
 
 const TYPE_OPTIONS: { key: RecurringType; label: string; color: string }[] = [
   { key: 'EXPENSE', label: '지출', color: Colors.expense },
+  { key: 'INCOME', label: '수입', color: Colors.income },
   { key: 'TRANSFER', label: '이체', color: Colors.transfer },
 ];
 
@@ -31,7 +33,6 @@ export default function RecurringFormScreen() {
   const existing = useRecurringStore((s) => s.items.find((r) => r.id === id));
   const { add, edit, remove, currentPeriodTransactions, applyToTransactions } = useRecurringStore();
   const accounts = useAccountStore(useShallow(selectVisibleAccounts));
-  const categories = useCategoryStore(useShallow(selectActiveCategories('EXPENSE')));
 
   const today = format(new Date(), 'yyyy-MM-dd');
   const [name, setName] = useState('');
@@ -44,6 +45,20 @@ export default function RecurringFormScreen() {
   const [billingDayText, setBillingDayText] = useState(String(new Date().getDate()));
   const [startDate, setStartDate] = useState(today);
   const [saving, setSaving] = useState(false);
+  const keyboard = useKeyboardInset();
+
+  const isIncome = type === 'INCOME';
+  const categories = useCategoryStore(
+    useShallow(selectActiveCategories(isIncome ? 'INCOME' : 'EXPENSE'))
+  );
+  const accountLabel = isIncome ? '입금 계좌' : '출금 계좌';
+  const dayLabel = isIncome ? '입금일' : '출금일';
+
+  const changeType = (t: RecurringType) => {
+    if (t === type) return;
+    setType(t);
+    setCategoryId(null); // 지출/수입 카테고리가 다르므로 초기화
+  };
 
   useEffect(() => {
     if (!existing) return;
@@ -71,14 +86,14 @@ export default function RecurringFormScreen() {
   const onSave = async () => {
     if (!name.trim()) return Alert.alert('이름을 입력해 주세요');
     if (amount <= 0) return Alert.alert('금액을 입력해 주세요');
-    if (!accountId) return Alert.alert('출금 계좌를 선택해 주세요');
+    if (!accountId) return Alert.alert(`${accountLabel}를 선택해 주세요`);
     if (type === 'TRANSFER') {
       if (!toAccountId) return Alert.alert('입금 계좌를 선택해 주세요');
       if (toAccountId === accountId) return Alert.alert('출금 계좌와 입금 계좌가 같습니다');
     } else if (!categoryId) {
       return Alert.alert('카테고리를 선택해 주세요');
     }
-    if (!validDay) return Alert.alert('출금일은 1~31 사이로 입력해 주세요');
+    if (!validDay) return Alert.alert(`${dayLabel}은 1~31 사이로 입력해 주세요`);
 
     const input: RecurringInput = {
       name: name.trim(),
@@ -86,7 +101,7 @@ export default function RecurringFormScreen() {
       amount,
       accountId,
       toAccountId: type === 'TRANSFER' ? toAccountId : null,
-      categoryId: type === 'EXPENSE' ? categoryId : null,
+      categoryId: type === 'TRANSFER' ? null : categoryId,
       cycle,
       billingDay,
       startDate,
@@ -153,19 +168,21 @@ export default function RecurringFormScreen() {
   }
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { paddingBottom: keyboard.bottom }]}>
       <ScrollView
+        ref={keyboard.scrollRef}
+        onScroll={keyboard.onScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        automaticallyAdjustKeyboardInsets
       >
         <Field label="이름">
           <TextInput
             style={inputStyle}
             value={name}
             onChangeText={setName}
-            placeholder="예: 넷플릭스, 생활비 이체"
+            placeholder={isIncome ? '예: 월급' : '예: 넷플릭스, 생활비 이체'}
             placeholderTextColor={Colors.textSecondary}
             autoFocus={!isEdit}
           />
@@ -179,7 +196,7 @@ export default function RecurringFormScreen() {
                 label={t.label}
                 selected={t.key === type}
                 color={t.color}
-                onPress={() => setType(t.key)}
+                onPress={() => changeType(t.key)}
               />
             ))}
           </View>
@@ -189,7 +206,7 @@ export default function RecurringFormScreen() {
           <AmountInput value={amount} onChange={setAmount} />
         </Field>
 
-        {type === 'EXPENSE' && (
+        {type !== 'TRANSFER' && (
           <Field label="카테고리">
             <View style={styles.chips}>
               {categories.map((c) => (
@@ -197,7 +214,7 @@ export default function RecurringFormScreen() {
                   key={c.id}
                   label={`${c.icon ? c.icon + ' ' : ''}${c.name}`}
                   selected={c.id === categoryId}
-                  color={Colors.expense}
+                  color={isIncome ? Colors.income : Colors.expense}
                   onPress={() => setCategoryId(c.id)}
                 />
               ))}
@@ -205,7 +222,7 @@ export default function RecurringFormScreen() {
           </Field>
         )}
 
-        <Field label="출금 계좌">
+        <Field label={accountLabel}>
           <View style={styles.chips}>
             {accounts.map((a) => (
               <Chip
@@ -213,6 +230,7 @@ export default function RecurringFormScreen() {
                 label={a.name}
                 selected={a.id === accountId}
                 onPress={() => setAccountId(a.id)}
+                tinted={a.type === 'CARD'}
               />
             ))}
           </View>
@@ -227,6 +245,7 @@ export default function RecurringFormScreen() {
                   label={a.name}
                   selected={a.id === toAccountId}
                   onPress={() => setToAccountId(a.id)}
+                  tinted={a.type === 'CARD'}
                 />
               ))}
             </View>
@@ -246,7 +265,7 @@ export default function RecurringFormScreen() {
           </View>
         </Field>
 
-        <Field label="출금일">
+        <Field label={dayLabel}>
           <View style={styles.dayRow}>
             <TextInput
               style={[inputStyle, styles.dayInput]}
@@ -260,7 +279,13 @@ export default function RecurringFormScreen() {
           </View>
         </Field>
 
-        <Field label={cycle === 'YEARLY' ? '시작일 (이 날짜의 월이 매년 출금 월)' : '시작일'}>
+        <Field
+          label={
+            cycle === 'YEARLY'
+              ? `시작일 (이 날짜의 월이 매년 ${isIncome ? '입금' : '출금'} 월)`
+              : '시작일'
+          }
+        >
           <DateStepper value={startDate} onChange={setStartDate} />
         </Field>
 
@@ -268,10 +293,12 @@ export default function RecurringFormScreen() {
           <View style={styles.preview}>
             <Text style={styles.previewText}>
               {preview.label}
-              {preview.next ? ` · 다음 출금 ${format(parseISO(preview.next), 'yyyy.MM.dd')}` : ''}
+              {preview.next
+                ? ` · 다음 ${isIncome ? '입금' : '출금'} ${format(parseISO(preview.next), 'yyyy.MM.dd')}`
+                : ''}
             </Text>
             <Text style={styles.previewSub}>
-              시작일 이후 출금일이 되면 앱을 열 때 자동으로 기록돼요.
+              시작일 이후 {dayLabel}이 되면 앱을 열 때 자동으로 기록돼요.
             </Text>
           </View>
         )}

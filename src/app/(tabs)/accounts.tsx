@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { ACCOUNT_TYPE_LABELS } from '@/constants/labels';
 import { repositories } from '@/data/repositories';
-import { computeBalance, type AccountSums } from '@/domain/balance';
+import { computeBalance, totalBalance, type AccountSums } from '@/domain/balance';
 import { formatWon } from '@/domain/money';
 import { ScreenHeader, headerButtonStyles as hb } from '@/components/common/ScreenHeader';
 import { useShallow } from 'zustand/react/shallow';
@@ -44,6 +44,15 @@ export default function AccountsScreen() {
         data={accounts}
         keyExtractor={(a) => a.id}
         contentContainerStyle={styles.list}
+        // 숨김이 아닌 계좌 전체의 합계 (카드 포함)
+        ListHeaderComponent={
+          accounts.length > 0 ? (
+            <View style={styles.total}>
+              <Text style={styles.totalLabel}>전체 합계</Text>
+              <BalanceText amount={totalBalance(accounts, sums)} />
+            </View>
+          ) : undefined
+        }
         renderItem={({ item }) => (
           <Pressable
             onPress={() => router.navigate({ pathname: '/history', params: { accountId: item.id } })}
@@ -87,6 +96,16 @@ function BalanceText({ amount }: { amount: number }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   list: { paddingHorizontal: 16, paddingBottom: 24 },
+  total: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+  },
+  totalLabel: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

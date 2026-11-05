@@ -62,7 +62,7 @@ export type TransactionInput = {
   memo: string | null;
 };
 
-export type RecurringType = 'EXPENSE' | 'TRANSFER';
+export type RecurringType = 'EXPENSE' | 'INCOME' | 'TRANSFER';
 export type RecurringCycle = 'MONTHLY' | 'YEARLY';
 
 /** 자동이체(정기 거래). YEARLY는 start_date의 월을 매년 출금 월로 쓴다 */
@@ -71,9 +71,9 @@ export type Recurring = Audit & {
   name: string;
   type: RecurringType;
   amount: number;
-  accountId: string; // 출금 계좌
+  accountId: string; // INCOME: 입금 계좌 / EXPENSE, TRANSFER: 출금 계좌
   toAccountId: string | null; // TRANSFER 입금 계좌
-  categoryId: string | null; // EXPENSE 카테고리
+  categoryId: string | null; // TRANSFER는 null
   cycle: RecurringCycle;
   billingDay: number; // 1~31, 없는 날짜는 그 달 말일로 보정
   startDate: string; // YYYY-MM-DD

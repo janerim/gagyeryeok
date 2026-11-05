@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { Chip } from '@/components/common/Chip';
 import { Field, inputStyle } from '@/components/common/Field';
+import { FormFooter } from '@/components/common/FormFooter';
+import { useKeyboardInset } from '@/hooks/useKeyboardInset';
 import { useCategoryStore } from '@/store/categoryStore';
 import type { CategoryType } from '@/types';
 
@@ -17,6 +19,7 @@ export default function CategoryFormScreen() {
   const [icon, setIcon] = useState('');
   const [type, setType] = useState<CategoryType>(initialType ?? 'EXPENSE');
   const [saving, setSaving] = useState(false);
+  const keyboard = useKeyboardInset();
 
   useEffect(() => {
     if (!existing) return;
@@ -56,15 +59,17 @@ export default function CategoryFormScreen() {
   };
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { paddingBottom: keyboard.bottom }]}>
       <ScrollView
+        ref={keyboard.scrollRef}
+        onScroll={keyboard.onScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
-        automaticallyAdjustKeyboardInsets
       >
-        {/* 유형은 생성 시에만 고른다. 거래가 붙은 뒤 바꾸면 통계가 섞인다. */}
+        {/* 유형은 생성 시에만 고른다. 거래가 붙은 뒤 바꾸면 통계가 섞인다. 수정 때는 흐리게 */}
         <Field label="구분">
-          <View style={styles.chips}>
+          <View style={[styles.chips, isEdit && styles.locked]}>
             {(['EXPENSE', 'INCOME'] as CategoryType[]).map((t) => (
               <Chip
                 key={t}
@@ -98,23 +103,14 @@ export default function CategoryFormScreen() {
             maxLength={4}
           />
         </Field>
-
-        {isEdit && (
-          <Pressable onPress={onDelete} style={styles.deleteBtn}>
-            <Text style={styles.deleteText}>삭제</Text>
-          </Pressable>
-        )}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <Pressable
-          onPress={onSave}
-          disabled={saving}
-          style={[styles.saveBtn, saving && { opacity: 0.5 }]}
-        >
-          <Text style={styles.saveText}>{isEdit ? '수정' : '저장'}</Text>
-        </Pressable>
-      </View>
+      <FormFooter
+        saveLabel={isEdit ? '수정' : '저장'}
+        onSave={onSave}
+        saving={saving}
+        onDelete={isEdit ? onDelete : undefined}
+      />
     </View>
   );
 }
@@ -123,18 +119,5 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.background },
   container: { padding: 20, gap: 20 },
   chips: { flexDirection: 'row', gap: 8 },
-  deleteBtn: { alignItems: 'center', paddingVertical: 12 },
-  deleteText: { color: Colors.danger, fontSize: 15, fontWeight: '600' },
-  footer: {
-    padding: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.border,
-  },
-  saveBtn: {
-    paddingVertical: 14,
-    borderRadius: 10,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-  },
-  saveText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  locked: { opacity: 0.5 },
 });

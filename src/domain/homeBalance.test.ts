@@ -7,6 +7,12 @@ const expense = (accountId: string, amount: number) => ({
   accountId,
   toAccountId: null,
 });
+const income = (accountId: string, amount: number) => ({
+  type: 'INCOME' as const,
+  amount,
+  accountId,
+  toAccountId: null,
+});
 const transfer = (from: string, to: string, amount: number) => ({
   type: 'TRANSFER' as const,
   amount,
@@ -35,6 +41,16 @@ describe('homeBalance', () => {
       daysLeft: 26,
     });
     expect(r.perDay).toBe(Math.floor(1030000 / 26));
+  });
+
+  it('이 계좌로 들어올 수입형 자동이체는 더한다', () => {
+    const r = homeBalance(
+      'a1',
+      100000,
+      [income('a1', 3000000), income('a2', 500000), expense('a1', 20000)],
+      '2026-11-05'
+    );
+    expect(r).toMatchObject({ scheduledOut: 20000, scheduledIn: 3000000, available: 3080000 });
   });
 
   it('남은 날은 오늘을 포함한다', () => {

@@ -72,7 +72,7 @@ function toTransactionInput(r: Recurring, date: string) {
     date,
     accountId: r.accountId,
     toAccountId: r.type === 'TRANSFER' ? r.toAccountId : null,
-    categoryId: r.type === 'EXPENSE' ? r.categoryId : null,
+    categoryId: r.type === 'TRANSFER' ? null : r.categoryId,
     memo: r.name,
   };
 }

@@ -19,7 +19,13 @@ export function DateStepper({ value, onChange }: Props) {
   const shift = (d: number) => onChange(format(addDays(date, d), 'yyyy-MM-dd'));
   return (
     <View style={styles.row}>
-      <Pressable onPress={() => shift(-1)} style={styles.arrow} hitSlop={8}>
+      <Pressable
+        onPress={() => shift(-1)}
+        style={styles.arrow}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="이전 날"
+      >
         <Text style={styles.arrowText}>‹</Text>
       </Pressable>
       <Pressable onPress={() => setPickerOpen(true)} style={styles.valueBtn} hitSlop={6}>
@@ -28,7 +34,13 @@ export function DateStepper({ value, onChange }: Props) {
           <Text style={styles.caret}> ▾</Text>
         </Text>
       </Pressable>
-      <Pressable onPress={() => shift(1)} style={styles.arrow} hitSlop={8}>
+      <Pressable
+        onPress={() => shift(1)}
+        style={styles.arrow}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="다음 날"
+      >
         <Text style={styles.arrowText}>›</Text>
       </Pressable>
       <DatePickerSheet

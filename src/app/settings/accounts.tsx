@@ -77,7 +77,13 @@ function AccountRow({ item, editing }: { item: Account; editing: boolean }) {
         </Text>
       </View>
       {editing ? (
-        <Pressable onPressIn={drag} hitSlop={10} style={styles.handle}>
+        <Pressable
+          onPressIn={drag}
+          hitSlop={10}
+          style={styles.handle}
+          accessibilityRole="button"
+          accessibilityLabel="순서 변경"
+        >
           <Text style={styles.handleText}>≡</Text>
         </Pressable>
       ) : (

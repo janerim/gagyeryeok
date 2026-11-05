@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
 type Props = {
@@ -16,11 +17,22 @@ export function MonthNavigator({ date, onPrev, onNext, onPressLabel }: Props) {
   const label = `${yy}년 ${mm}월`;
   return (
     <View style={styles.row}>
-      <Pressable onPress={onPrev} hitSlop={12} style={styles.arrow}>
-        <Text style={styles.arrowText}>‹</Text>
+      <Pressable
+        onPress={onPrev}
+        hitSlop={12}
+        style={styles.arrow}
+        accessibilityRole="button"
+        accessibilityLabel="이전 달"
+      >
+        <Ionicons name="chevron-back" size={22} color={Colors.textPrimary} />
       </Pressable>
       {onPressLabel ? (
-        <Pressable onPress={onPressLabel} hitSlop={8}>
+        <Pressable
+          onPress={onPressLabel}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`${label}, 달 선택`}
+        >
           <Text style={styles.label}>
             {label} <Text style={styles.caret}>▾</Text>
           </Text>
@@ -28,8 +40,14 @@ export function MonthNavigator({ date, onPrev, onNext, onPressLabel }: Props) {
       ) : (
         <Text style={styles.label}>{label}</Text>
       )}
-      <Pressable onPress={onNext} hitSlop={12} style={styles.arrow}>
-        <Text style={styles.arrowText}>›</Text>
+      <Pressable
+        onPress={onNext}
+        hitSlop={12}
+        style={styles.arrow}
+        accessibilityRole="button"
+        accessibilityLabel="다음 달"
+      >
+        <Ionicons name="chevron-forward" size={22} color={Colors.textPrimary} />
       </Pressable>
     </View>
   );
@@ -39,19 +57,14 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    // 좁은 화면(375pt)에서 오른쪽 버튼들과 한 줄에 들어가도록 좁게 둔다
+    gap: 8,
   },
   arrow: {
     width: 32,
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  arrowText: {
-    fontSize: 26,
-    color: Colors.textPrimary,
-    fontWeight: '400',
-    lineHeight: 28,
   },
   label: {
     fontSize: 20,

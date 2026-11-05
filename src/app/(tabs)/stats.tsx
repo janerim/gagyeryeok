@@ -145,5 +145,5 @@ const styles = StyleSheet.create({
   sharePct: { fontSize: 13, color: Colors.textSecondary, fontWeight: '600' },
   shareAmount: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, minWidth: 80, textAlign: 'right' },
   barTrack: { height: 8, borderRadius: 4, backgroundColor: Colors.surface, overflow: 'hidden' },
-  barFill: { height: 8, borderRadius: 4, backgroundColor: Colors.expense },
+  barFill: { height: 8, borderRadius: 4, backgroundColor: Colors.primary },
 });

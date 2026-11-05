@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -18,6 +18,7 @@ import { DateStepper } from '@/components/common/DateStepper';
 import { Field, inputStyle } from '@/components/common/Field';
 import { FormFooter } from '@/components/common/FormFooter';
 import { orderByRecentUse } from '@/domain/recent';
+import { useKeyboardInset } from '@/hooks/useKeyboardInset';
 import { useRecentUse } from '@/hooks/useRecentUse';
 import { repositories } from '@/data/repositories';
 import { useShallow } from 'zustand/react/shallow';
@@ -50,6 +51,15 @@ export default function TransactionFormScreen() {
   const [saving, setSaving] = useState(false);
 
   const recent = useRecentUse(type);
+  const keyboard = useKeyboardInset();
+
+  // 새 거래: 계좌를 직접 고르기 전까지는 이 유형에서 마지막에 쓴 계좌를 미리 선택해 둔다
+  const accountPicked = useRef(false);
+  useEffect(() => {
+    if (isEdit || accountPicked.current) return;
+    const last = recent.accountIds.find((rid) => accounts.some((a) => a.id === rid));
+    if (last) setAccountId(last);
+  }, [isEdit, recent.accountIds, accounts]);
 
   // 수정 모드: 기존 거래 불러오기
   useEffect(() => {
@@ -138,12 +148,14 @@ export default function TransactionFormScreen() {
   const accountLabel = type === 'INCOME' ? '입금 계좌' : '출금 계좌';
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { paddingBottom: keyboard.bottom }]}>
       <ScrollView
+        ref={keyboard.scrollRef}
+        onScroll={keyboard.onScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        automaticallyAdjustKeyboardInsets
       >
         {/* 유형 세그먼트 */}
         <View style={styles.segment}>
@@ -198,7 +210,14 @@ export default function TransactionFormScreen() {
         )}
 
         <Field label={accountLabel}>
-          <AccountChips accounts={accounts} selectedId={accountId} onSelect={setAccountId} />
+          <AccountChips
+            accounts={accounts}
+            selectedId={accountId}
+            onSelect={(aid) => {
+              accountPicked.current = true;
+              setAccountId(aid);
+            }}
+          />
         </Field>
 
         {type === 'TRANSFER' && (

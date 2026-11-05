@@ -24,11 +24,23 @@ export function MonthPickerSheet({ visible, month, onSelect, onClose }: Props) {
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.yearRow}>
-            <Pressable onPress={() => setYear(year - 1)} hitSlop={12} style={styles.arrow}>
+            <Pressable
+              onPress={() => setYear(year - 1)}
+              hitSlop={12}
+              style={styles.arrow}
+              accessibilityRole="button"
+              accessibilityLabel="이전 해"
+            >
               <Text style={styles.arrowText}>‹</Text>
             </Pressable>
             <Text style={styles.year}>{year}년</Text>
-            <Pressable onPress={() => setYear(year + 1)} hitSlop={12} style={styles.arrow}>
+            <Pressable
+              onPress={() => setYear(year + 1)}
+              hitSlop={12}
+              style={styles.arrow}
+              accessibilityRole="button"
+              accessibilityLabel="다음 해"
+            >
               <Text style={styles.arrowText}>›</Text>
             </Pressable>
           </View>

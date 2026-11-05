@@ -12,3 +12,11 @@ export const EMPTY_SUMS: AccountSums = { income: 0, expense: 0, transferIn: 0, t
 export function computeBalance(initialBalance: number, sums: AccountSums = EMPTY_SUMS): number {
   return initialBalance + sums.income + sums.transferIn - sums.expense - sums.transferOut;
 }
+
+/** 여러 계좌의 잔액 합계. 카드처럼 잔액이 음수인 계좌는 그만큼 깎인다 */
+export function totalBalance(
+  accounts: { id: string; initialBalance: number }[],
+  sums: Map<string, AccountSums>
+): number {
+  return accounts.reduce((total, a) => total + computeBalance(a.initialBalance, sums.get(a.id)), 0);
+}

@@ -4,19 +4,24 @@ import type { TransactionType } from '@/types';
 
 const LIMIT = 5;
 
+type RecentUse = { categoryIds: string[]; accountIds: string[] };
+
 /**
- * 입력 화면에서 "최근 사용" 카테고리를 앞에 두기 위한 id 목록 (최근 순).
- * 계좌는 종류별로 묶어 계좌 관리의 순서대로 보여 주므로 여기서 다루지 않는다.
+ * 입력 화면용 최근 사용 id 목록 (최근 순).
+ * 카테고리는 앞에 두는 데, 계좌는 마지막에 쓴 것을 미리 선택하는 데 쓴다
+ * (계좌 칩의 순서는 계좌 관리에서 정한 그대로 둔다).
  */
 export function useRecentUse(type: TransactionType) {
-  const [recent, setRecent] = useState<{ categoryIds: string[] }>({ categoryIds: [] });
+  const [recent, setRecent] = useState<RecentUse>({ categoryIds: [], accountIds: [] });
 
   useEffect(() => {
     let alive = true;
-    repositories.transaction
-      .recentCategoryIds(type, LIMIT)
-      .then((categoryIds) => {
-        if (alive) setRecent({ categoryIds });
+    Promise.all([
+      repositories.transaction.recentCategoryIds(type, LIMIT),
+      repositories.transaction.recentAccountIds(type, LIMIT),
+    ])
+      .then(([categoryIds, accountIds]) => {
+        if (alive) setRecent({ categoryIds, accountIds });
       })
       .catch(console.error);
     return () => {

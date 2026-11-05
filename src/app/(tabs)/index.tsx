@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { addDays, addMonths, endOfMonth, format, parseISO } from 'date-fns';
 import { Colors } from '@/constants/colors';
 import { Calendar } from '@/components/calendar/Calendar';
@@ -86,17 +87,24 @@ export default function CalendarScreen() {
         }
         right={
           <>
-            <Pressable onPress={() => router.push('/settings')} style={hb.btn}>
-              <Text style={[hb.text, styles.gear]}>⚙︎</Text>
+            <Pressable
+              onPress={() => router.push('/settings')}
+              style={[hb.btn, hb.iconBtn]}
+              accessibilityRole="button"
+              accessibilityLabel="설정"
+            >
+              <Ionicons name="settings-outline" size={20} color={Colors.textPrimary} />
             </Pressable>
             <Pressable onPress={() => setMonth(today.slice(0, 7))} style={hb.btn}>
               <Text style={hb.text}>오늘</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push('/transaction-form')}
-              style={[hb.btn, hb.btnPrimary]}
+              style={[hb.btn, hb.iconBtn, hb.btnPrimary]}
+              accessibilityRole="button"
+              accessibilityLabel="거래 추가"
             >
-              <Text style={hb.textPrimary}>+</Text>
+              <Ionicons name="add" size={24} color="#fff" />
             </Pressable>
           </>
         }
@@ -126,7 +134,10 @@ export default function CalendarScreen() {
           </Text>
           <View style={styles.homeRow}>
             <Text style={styles.homeLine}>
-              쓸 수 있는 <Text style={styles.homeAvailable}>{formatWon(home.available)}원</Text>
+              쓸 수 있는{' '}
+              <Text style={[styles.homeAvailable, home.available < 0 && { color: Colors.expense }]}>
+                {formatWon(home.available)}원
+              </Text>
             </Text>
             <Text style={styles.homeSub}>
               {home.daysLeft}일 남음 · 하루 {formatWonShort(home.perDay)}
@@ -158,11 +169,13 @@ export default function CalendarScreen() {
         renderDay={(day) => {
           if (!day.inMonth) return null;
           const t = byDay.get(day.date);
-          // 예정 자동이체도 이체는 칸에 표시하지 않는다 (지출만)
-          const plannedExpense = (scheduled.get(day.date) ?? [])
-            .filter((r) => r.type === 'EXPENSE')
-            .reduce((sum, r) => sum + r.amount, 0);
-          if (!t && plannedExpense === 0) return null;
+          // 예정 자동이체도 이체는 칸에 표시하지 않는다 (수입·지출만)
+          const planned = scheduled.get(day.date) ?? [];
+          const plannedSum = (type: 'INCOME' | 'EXPENSE') =>
+            planned.filter((r) => r.type === type).reduce((sum, r) => sum + r.amount, 0);
+          const plannedIncome = plannedSum('INCOME');
+          const plannedExpense = plannedSum('EXPENSE');
+          if (!t && plannedIncome === 0 && plannedExpense === 0) return null;
           return (
             <>
               {t && t.income > 0 && (
@@ -173,6 +186,14 @@ export default function CalendarScreen() {
               {t && t.expense > 0 && (
                 <Text style={[styles.cellAmount, { color: Colors.expense }]} numberOfLines={1}>
                   {`-${formatWonShort(t.expense)}`}
+                </Text>
+              )}
+              {plannedIncome > 0 && (
+                <Text
+                  style={[styles.cellAmount, styles.planned, { color: Colors.income }]}
+                  numberOfLines={1}
+                >
+                  {`+${formatWonShort(plannedIncome)}`}
                 </Text>
               )}
               {plannedExpense > 0 && (
@@ -224,7 +245,6 @@ function SummaryItem({ label, value, color }: { label: string; value: string; co
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
-  gear: { fontSize: 28, lineHeight: 32 },
   summary: {
     flexDirection: 'row',
     marginHorizontal: 16,
@@ -251,5 +271,5 @@ const styles = StyleSheet.create({
   summaryValue: { fontSize: 15, fontWeight: '700' },
   cellAmount: { fontSize: 10, fontWeight: '600', letterSpacing: -0.3 },
   weekAmount: { color: Colors.expense, fontWeight: '700', paddingTop: 1 },
-  planned: { opacity: 0.4 },
+  planned: { opacity: 0.55 },
 });

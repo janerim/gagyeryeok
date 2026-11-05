@@ -22,6 +22,13 @@ type Props = {
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
+const SCHEDULED_COLOR = {
+  EXPENSE: Colors.expense,
+  INCOME: Colors.income,
+  TRANSFER: Colors.transfer,
+} as const;
+const SCHEDULED_SIGN = { EXPENSE: '-', INCOME: '+', TRANSFER: '' } as const;
+
 /** 달력에서 날짜를 누르면 올라오는 그날 내역 시트 */
 export function DaySheet({
   date,
@@ -107,10 +114,10 @@ export function DaySheet({
                 <Text
                   style={[
                     styles.scheduledAmount,
-                    { color: r.type === 'EXPENSE' ? Colors.expense : Colors.transfer },
+                    { color: SCHEDULED_COLOR[r.type] },
                   ]}
                 >
-                  {r.type === 'EXPENSE' ? `-${formatWon(r.amount)}` : formatWon(r.amount)}
+                  {`${SCHEDULED_SIGN[r.type]}${formatWon(r.amount)}`}
                 </Text>
               </Pressable>
             ))}

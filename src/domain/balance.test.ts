@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeBalance } from './balance';
+import { computeBalance, totalBalance } from './balance';
 
 describe('computeBalance', () => {
   it('거래가 없으면 초기 잔액', () => {
@@ -20,5 +20,24 @@ describe('computeBalance', () => {
 
   it('카드처럼 지출만 있으면 음수가 될 수 있다', () => {
     expect(computeBalance(0, { income: 0, expense: 42_000, transferIn: 0, transferOut: 0 })).toBe(-42_000);
+  });
+});
+
+describe('totalBalance', () => {
+  it('계좌가 없으면 0', () => {
+    expect(totalBalance([], new Map())).toBe(0);
+  });
+
+  it('계좌별 잔액을 더하고, 카드의 음수 잔액은 그만큼 깎는다', () => {
+    const accounts = [
+      { id: 'bank', initialBalance: 1_000_000 },
+      { id: 'card', initialBalance: 0 },
+      { id: 'cash', initialBalance: 30_000 }, // 거래 없는 계좌는 초기 잔액 그대로
+    ];
+    const sums = new Map([
+      ['bank', { income: 200_000, expense: 50_000, transferIn: 0, transferOut: 0 }],
+      ['card', { income: 0, expense: 120_000, transferIn: 0, transferOut: 0 }],
+    ]);
+    expect(totalBalance(accounts, sums)).toBe(1_150_000 - 120_000 + 30_000);
   });
 });

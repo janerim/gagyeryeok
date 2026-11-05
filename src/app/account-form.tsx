@@ -6,6 +6,7 @@ import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABELS } from '@/constants/labels';
 import { AmountInput } from '@/components/common/AmountInput';
 import { Chip } from '@/components/common/Chip';
 import { Field, inputStyle } from '@/components/common/Field';
+import { repositories } from '@/data/repositories';
 import { useAccountStore } from '@/store/accountStore';
 import type { AccountType } from '@/types';
 
@@ -13,7 +14,7 @@ export default function AccountFormScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEdit = !!id;
   const existing = useAccountStore((s) => s.accounts.find((a) => a.id === id));
-  const { add, edit, setHidden } = useAccountStore();
+  const { add, edit, setHidden, remove } = useAccountStore();
 
   const [name, setName] = useState('');
   const [type, setType] = useState<AccountType>('CHECKING');
@@ -53,6 +54,37 @@ export default function AccountFormScreen() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const onDelete = async () => {
+    if (!id) return;
+    // 거래가 남아 있는 계좌를 지우면 과거 기록의 계좌 이름과 잔액이 깨지므로 숨김으로 안내한다
+    const refs = await repositories.account.references(id);
+    const kept = [
+      refs.transactions > 0 && `거래 ${refs.transactions}건`,
+      refs.recurrings > 0 && `자동이체 ${refs.recurrings}개`,
+    ].filter(Boolean);
+    if (kept.length > 0) {
+      return Alert.alert(
+        '지울 수 없어요',
+        `이 계좌에 남아 있는 기록: ${kept.join(', ')}\n기록이 있는 계좌는 지울 수 없어요. 대신 숨김을 써 주세요.`
+      );
+    }
+    Alert.alert('삭제', '이 계좌를 삭제할까요?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await remove(id);
+            router.back();
+          } catch (e: any) {
+            Alert.alert('삭제 실패', e?.message ?? String(e));
+          }
+        },
+      },
+    ]);
   };
 
   return (
@@ -109,6 +141,12 @@ export default function AccountFormScreen() {
             <Switch value={hidden} onValueChange={setHiddenLocal} />
           </View>
         )}
+
+        {isEdit && (
+          <Pressable onPress={() => onDelete().catch(console.error)} style={styles.deleteBtn}>
+            <Text style={styles.deleteText}>삭제</Text>
+          </Pressable>
+        )}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -148,4 +186,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  deleteBtn: { alignItems: 'center', paddingVertical: 12 },
+  deleteText: { color: Colors.danger, fontSize: 15, fontWeight: '600' },
 });

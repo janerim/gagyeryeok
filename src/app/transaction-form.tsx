@@ -23,7 +23,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { selectVisibleAccounts, useAccountStore } from '@/store/accountStore';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useTransactionStore } from '@/store/transactionStore';
-import type { TransactionInput, TransactionType } from '@/types';
+import type { Account, TransactionInput, TransactionType } from '@/types';
 
 const TYPE_COLOR: Record<TransactionType, string> = {
   EXPENSE: Colors.expense,
@@ -70,11 +70,6 @@ export default function TransactionFormScreen() {
     const active = categories.filter((c) => c.deletedAt === null && c.type === type);
     return orderByRecentUse(active, recent.categoryIds);
   }, [categories, type, recent.categoryIds]);
-
-  const accountOptions = useMemo(
-    () => orderByRecentUse(accounts, recent.accountIds),
-    [accounts, recent.accountIds]
-  );
 
   const changeType = (t: TransactionType) => {
     setType(t);
@@ -169,6 +164,17 @@ export default function TransactionFormScreen() {
 
         <AmountInput value={amount} onChange={setAmount} autoFocus={!isEdit} large />
 
+        <Field label="메모 (선택)">
+          <TextInput
+            style={inputStyle}
+            value={memo}
+            onChangeText={setMemo}
+            placeholder="예: 점심, 넷플릭스"
+            placeholderTextColor={Colors.textSecondary}
+            returnKeyType="done"
+          />
+        </Field>
+
         {type !== 'TRANSFER' && (
           <Field label="카테고리">
             <View style={styles.chips}>
@@ -191,46 +197,17 @@ export default function TransactionFormScreen() {
         )}
 
         <Field label={accountLabel}>
-          <View style={styles.chips}>
-            {accountOptions.map((a) => (
-              <Chip
-                key={a.id}
-                label={a.name}
-                selected={a.id === accountId}
-                onPress={() => setAccountId(a.id)}
-              />
-            ))}
-          </View>
+          <AccountChips accounts={accounts} selectedId={accountId} onSelect={setAccountId} />
         </Field>
 
         {type === 'TRANSFER' && (
           <Field label="입금 계좌">
-            <View style={styles.chips}>
-              {accounts.map((a) => (
-                <Chip
-                  key={a.id}
-                  label={a.name}
-                  selected={a.id === toAccountId}
-                  onPress={() => setToAccountId(a.id)}
-                />
-              ))}
-            </View>
+            <AccountChips accounts={accounts} selectedId={toAccountId} onSelect={setToAccountId} />
           </Field>
         )}
 
         <Field label="날짜">
           <DateStepper value={date} onChange={setDate} />
-        </Field>
-
-        <Field label="메모 (선택)">
-          <TextInput
-            style={inputStyle}
-            value={memo}
-            onChangeText={setMemo}
-            placeholder="예: 점심, 넷플릭스"
-            placeholderTextColor={Colors.textSecondary}
-            returnKeyType="done"
-          />
         </Field>
 
         {isEdit && (
@@ -249,6 +226,32 @@ export default function TransactionFormScreen() {
           <Text style={styles.primaryBtnText}>{isEdit ? '수정' : '저장'}</Text>
         </Pressable>
       </View>
+    </View>
+  );
+}
+
+/** 계좌 관리에서 정한 순서대로 한 줄에. 카드는 색으로 통장과 구분한다 */
+function AccountChips({
+  accounts,
+  selectedId,
+  onSelect,
+}: {
+  accounts: Account[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <View style={styles.chips}>
+      {accounts.map((a) => (
+        <Chip
+          key={a.id}
+          label={a.name}
+          selected={a.id === selectedId}
+          onPress={() => onSelect(a.id)}
+          color={a.type === 'CARD' ? Colors.card : undefined}
+          tinted={a.type === 'CARD'}
+        />
+      ))}
     </View>
   );
 }

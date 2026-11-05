@@ -1,7 +1,7 @@
 import { randomUUID } from 'expo-crypto';
 import { getDB, nowISO } from '@/data/db/database';
 import type { Account, AccountInput, AccountType } from '@/types';
-import type { AccountRepository } from './AccountRepository';
+import type { AccountReferences, AccountRepository } from './AccountRepository';
 
 type Row = {
   id: string;
@@ -112,5 +112,34 @@ export class SqliteAccountRepository implements AccountRepository {
         );
       }
     });
+  }
+
+  async references(id: string): Promise<AccountReferences> {
+    const db = await getDB();
+    const count = async (table: string) => {
+      const row = await db.getFirstAsync<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM "${table}"
+         WHERE deleted_at IS NULL AND (account_id = ? OR to_account_id = ?)`,
+        id,
+        id
+      );
+      return row?.n ?? 0;
+    };
+    return { transactions: await count('transaction'), recurrings: await count('recurring') };
+  }
+
+  async softDelete(id: string): Promise<void> {
+    const refs = await this.references(id);
+    if (refs.transactions > 0 || refs.recurrings > 0) {
+      throw new Error('거래나 자동이체가 있는 계좌는 지울 수 없습니다');
+    }
+    const db = await getDB();
+    const now = nowISO();
+    await db.runAsync(
+      'UPDATE account SET deleted_at = ?, updated_at = ? WHERE id = ?',
+      now,
+      now,
+      id
+    );
   }
 }

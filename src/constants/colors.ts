@@ -10,6 +10,7 @@ export const Colors = {
   income: '#3D7EFF',
   expense: '#FF3B30',
   transfer: '#8E8E93',
+  card: '#6D28D9', // 입력 화면에서 카드 계좌 칩을 통장과 구분
   saturday: '#3D7EFF',
   sunday: '#FF3B30',
   todayBg: '#E3F3EE',

@@ -106,4 +106,15 @@ export const MIGRATIONS: ((db: SQLiteDatabase) => Promise<void>)[] = [
       'ALTER TABLE account ADD COLUMN show_on_home INTEGER NOT NULL DEFAULT 0'
     );
   },
+  // v3: 새 설치의 기본 카테고리 '구독'을 '클라우드'로. 구독 여부는 자동이체로 구분한다.
+  // 계좌가 있으면 이미 쓰는 사용자이므로 기존 카테고리를 건드리지 않는다
+  async (db) => {
+    const inUse = await db.getFirstAsync('SELECT 1 FROM account LIMIT 1');
+    if (inUse) return;
+    await db.runAsync(
+      `UPDATE category SET name = '클라우드', icon = '☁️', updated_at = ?
+       WHERE name = '구독' AND type = 'EXPENSE'`,
+      new Date().toISOString()
+    );
+  },
 ];

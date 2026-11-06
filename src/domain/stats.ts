@@ -30,6 +30,14 @@ export function dailyTotals(txs: Tx[]): Map<string, Totals> {
   return map;
 }
 
+/** 자동이체로 기록된 지출 합계. 아직 빠져나가지 않은 예정분과 계좌 간 이체는 넣지 않는다 */
+export function recurringExpense(txs: Pick<Transaction, 'type' | 'amount' | 'recurringId'>[]): number {
+  return txs.reduce(
+    (sum, t) => (t.type === 'EXPENSE' && t.recurringId ? sum + t.amount : sum),
+    0
+  );
+}
+
 export type CategoryShare = {
   categoryId: string | null; // 카테고리 없는 지출은 null
   amount: number;

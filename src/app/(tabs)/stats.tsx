@@ -8,7 +8,7 @@ import { MonthNavigator } from '@/components/calendar/MonthNavigator';
 import { MonthPickerSheet } from '@/components/calendar/MonthPickerSheet';
 import { ScreenHeader, headerButtonStyles as hb } from '@/components/common/ScreenHeader';
 import { formatWon } from '@/domain/money';
-import { expenseByCategory, sumTotals } from '@/domain/stats';
+import { expenseByCategory, recurringExpense, sumTotals } from '@/domain/stats';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useTransactionStore } from '@/store/transactionStore';
 
@@ -24,6 +24,7 @@ export default function StatsScreen() {
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
   const totals = useMemo(() => sumTotals(items), [items]);
   const shares = useMemo(() => expenseByCategory(items), [items]);
+  const recurring = useMemo(() => recurringExpense(items), [items]);
 
   const monthDate = parseISO(`${month}-01`);
   const shiftMonth = (d: number) => setMonth(format(addMonths(monthDate, d), 'yyyy-MM'));
@@ -59,6 +60,9 @@ export default function StatsScreen() {
         <View style={styles.totals}>
           <TotalRow label="수입" value={formatWon(totals.income)} color={Colors.income} />
           <TotalRow label="지출" value={formatWon(totals.expense)} color={Colors.expense} />
+          {recurring > 0 && (
+            <TotalRow label="그중 자동이체" value={formatWon(recurring)} color={Colors.textSecondary} />
+          )}
           <View style={styles.divider} />
           <TotalRow
             label="순액"

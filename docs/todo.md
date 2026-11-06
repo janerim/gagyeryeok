@@ -5,12 +5,15 @@
 
 ## 현재 상태 (2026-11-06)
 
-- TestFlight 에 **0.1.0 빌드 14** 까지 올라가 있다. 한 달쯤 실사용 테스트 뒤 App Store 출시 예정.
+- TestFlight 에 **0.1.0 빌드 16** 까지 올라가 있다. 한 달쯤 실사용 테스트 뒤 App Store 출시 예정.
 - 출시 때 정할 것: 버전 번호(0.1.0 → 1.0.0?), `docs/appstore-metadata.md` 의 "미정" 항목.
 - **출시할 때 책력 1.1.1 도 같이 올린다.** 책력(`../chaekryeok`)의 탭바·헤더 아이콘과 보조 글자색을 가계력과 맞춘 버전이고,
   새 기능이 없어서 따로 올리지 않고 가계력 출시에 맞춘다. 할 일과 문구는 책력의 `RELEASE_NOTES.md` "1.1.1" 에 있다.
 - 빌드·제출: `eas build --platform ios --profile production --non-interactive --auto-submit`
   (빌드 번호는 자동 증가. 끝나면 App Store Connect → TestFlight 에 5~10분 뒤 나타난다)
+- EAS 무료 플랜의 월 iOS 빌드 횟수를 넘으면 맥에서 직접 빌드한다 (`fastlane` 필요, 횟수를 쓰지 않음):
+  `eas build --platform ios --profile production --local --non-interactive --output /tmp/gagyeryeok.ipa` →
+  `eas submit --platform ios --profile production --path /tmp/gagyeryeok.ipa --non-interactive`
 - 확인 명령: `npm run typecheck`, `npm test`, `npx expo export --platform ios --output-dir /tmp/x` (번들 깨짐 확인)
 
 ## 진행 중: 실사용 피드백 7가지
@@ -90,7 +93,7 @@
   - `자동이체` 글자가 다른 정보와 구분이 안 돼 카테고리 옆 배지로 바꿈.
   - 자동이체 등록 전에 직접 입력한 거래도 연결한다 (`matchRecurringLinks`). 유형·금액·계좌가 같고, 메모가 이름과 같거나 날짜가 출금일이어야 한다.
     연결된 달에는 거래를 또 만들지 않는다.
-- [x] 빌드 14 를 써 보고 고친 것 (아직 빌드 전):
+- [x] 빌드 14 를 써 보고 고친 것 (빌드 16. 15 는 EAS 무료 횟수 초과로 실패해 번호만 지나감):
   - 거래 상세에 자동이체 표시, `자동이체 수정`, `연결 해제`, 직접 입력한 거래의 `자동이체 연결` (`RecurringLinkCard`).
     거래 수정을 막지 않는다. 이번 달만 다른 금액이나 지난 거래를 고칠 수 있어야 해서다.
   - 해제한 거래는 `unlinked_recurring_id` 에 남겨 다시 자동 연결되거나 그 주기 거래가 또 만들어지지 않게 한다 (마이그레이션 v4).

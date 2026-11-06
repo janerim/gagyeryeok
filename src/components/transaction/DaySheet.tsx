@@ -18,6 +18,8 @@ type Props = {
   onEdit: (id: string) => void;
   onAdd: (date: string) => void;
   onEditRecurring?: (id: string) => void;
+  /** 시트 높이가 정해지거나 바뀔 때 알려 준다 */
+  onHeightChange?: (height: number) => void;
 };
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -40,6 +42,7 @@ export function DaySheet({
   onEdit,
   onAdd,
   onEditRecurring,
+  onHeightChange,
 }: Props) {
   // iOS는 시트가 닫히는 도중에 모달 화면을 띄우면 무시되므로, 완전히 닫힌 뒤(onDismiss) 이동한다
   const pending = useRef<(() => void) | null>(null);
@@ -65,7 +68,11 @@ export function DaySheet({
       onDismiss={runPending}
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+        <Pressable
+          style={styles.sheet}
+          onPress={(e) => e.stopPropagation()}
+          onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
+        >
           <View style={styles.header}>
             <Text style={styles.title}>
               {d ? `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAYS[d.getDay()]})` : ''}

@@ -25,3 +25,13 @@ export function buildMonthGrid(month: string): CalendarDay[][] {
   }
   return weeks;
 }
+
+/** 아래에서 올라온 시트가 누른 칸을 가리지 않으려면 화면을 얼마나 올려야 하는지 */
+export function sheetShift(
+  cellBottom: number,
+  windowHeight: number,
+  sheetHeight: number,
+  gap = 8
+): number {
+  return Math.max(0, cellBottom + gap - (windowHeight - sheetHeight));
+}

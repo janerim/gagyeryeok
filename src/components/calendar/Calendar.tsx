@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Colors } from '@/constants/colors';
 import { buildMonthGrid, type CalendarDay } from '@/domain/calendar';
@@ -7,9 +7,10 @@ import { buildMonthGrid, type CalendarDay } from '@/domain/calendar';
 type Props = {
   month: string; // YYYY-MM
   today: string; // YYYY-MM-DD
-  /** 날짜 선택용으로 쓸 때 테두리로 표시할 날짜 */
+  /** 테두리로 표시할 날짜 */
   selected?: string;
-  onPressDay: (day: CalendarDay) => void;
+  /** 누른 칸의 화면 위치가 필요하면 e.currentTarget 으로 잰다 */
+  onPressDay: (day: CalendarDay, e: GestureResponderEvent) => void;
   /** 날짜 숫자 아래 내용. 앱마다 다른 부분이라 밖에서 주입한다 */
   renderDay?: (day: CalendarDay) => ReactNode;
   /** 주 행 오른쪽 열 내용 (주간 합계 등). 있으면 8번째 열이 생긴다 */
@@ -65,7 +66,7 @@ export function Calendar({
               return (
                 <Pressable
                   key={day.date}
-                  onPress={() => onPressDay(day)}
+                  onPress={(e) => onPressDay(day, e)}
                   style={({ pressed }) => [
                     styles.cell,
                     isToday && styles.todayCell,
@@ -84,6 +85,8 @@ export function Calendar({
                     {day.day}
                   </Text>
                   {renderDay && <View style={!day.inMonth && styles.outOfMonth}>{renderDay(day)}</View>}
+                  {/* 칸 크기가 변하지 않도록 테두리를 내용 위에 겹친다 */}
+                  {isSelected && <View pointerEvents="none" style={styles.selectedBorder} />}
                 </Pressable>
               );
             })}
@@ -121,7 +124,17 @@ const styles = StyleSheet.create({
     borderLeftColor: Colors.border,
   },
   todayCell: { backgroundColor: Colors.todayBg },
-  selectedCell: { borderWidth: 1.5, borderColor: Colors.primary },
+  selectedCell: { backgroundColor: Colors.primaryLight },
+  selectedBorder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderWidth: 2,
+    borderRadius: 8,
+    borderColor: Colors.primary,
+  },
   dayNum: { fontSize: 13, fontWeight: '600' },
   todayNum: { color: Colors.primaryDark, fontWeight: '800' },
   outOfMonth: { opacity: 0.3 },

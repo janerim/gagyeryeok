@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { formatWon } from '@/domain/money';
 import type { Category, Transaction } from '@/types';
@@ -28,7 +29,7 @@ const amountText = (t: Transaction) => {
 const amountColor = (t: Transaction) =>
   t.type === 'EXPENSE' ? Colors.expense : t.type === 'INCOME' ? Colors.income : Colors.transfer;
 
-/** 거래 한 줄: 카테고리(이체는 계좌 → 계좌), 계좌·자동이체 여부·메모, 금액 */
+/** 거래 한 줄: 카테고리(이체는 계좌 → 계좌)와 자동이체 배지, 계좌·메모, 금액 */
 export function TransactionRow({ tx, accountName, categoryById, onPress }: Props) {
   return (
     <Pressable
@@ -36,14 +37,19 @@ export function TransactionRow({ tx, accountName, categoryById, onPress }: Props
       style={({ pressed }) => [styles.row, pressed && { backgroundColor: Colors.surface }]}
     >
       <View style={{ flex: 1 }}>
-        <Text style={styles.title}>{describe(tx, accountName, categoryById)}</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title} numberOfLines={1}>
+            {describe(tx, accountName, categoryById)}
+          </Text>
+          {tx.recurringId && (
+            <View style={styles.badge}>
+              <Ionicons name="repeat" size={11} color={Colors.primaryDark} />
+              <Text style={styles.badgeText}>자동이체</Text>
+            </View>
+          )}
+        </View>
         <Text style={styles.sub} numberOfLines={1}>
-          {/* 메모가 길어 잘려도 보이도록 자동이체를 메모 앞에 둔다 */}
-          {[
-            tx.type === 'TRANSFER' ? null : accountName.get(tx.accountId) ?? '?',
-            tx.recurringId ? '자동이체' : null,
-            tx.memo,
-          ]
+          {[tx.type === 'TRANSFER' ? null : accountName.get(tx.accountId) ?? '?', tx.memo]
             .filter(Boolean)
             .join(' · ')}
         </Text>
@@ -63,7 +69,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.border,
   },
-  title: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  title: { flexShrink: 1, fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: Colors.primaryLight,
+  },
+  badgeText: { fontSize: 11, fontWeight: '700', color: Colors.primaryDark },
   sub: { marginTop: 2, fontSize: 12, color: Colors.textSecondary },
   amount: { fontSize: 16, fontWeight: '700', marginLeft: 12 },
 });

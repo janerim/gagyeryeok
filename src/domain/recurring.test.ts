@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   billingDate,
   dueOccurrences,
+  matchRecurringLinks,
   monthTotal,
   nextOccurrence,
   occurrencesBetween,
   scheduleLabel,
   scheduledByDate,
 } from './recurring';
+import type { Recurring } from '@/types';
 
 const monthly = (billingDay: number, startDate = '2026-01-01', endDate: string | null = null) => ({
   cycle: 'MONTHLY' as const,
@@ -132,5 +134,82 @@ describe('scheduledByDate', () => {
     expect(map.get('2026-11-25')?.map((r) => r.id)).toEqual(['a', 'b']);
     expect(map.has('2026-11-10')).toBe(true);
     expect(map.size).toBe(2);
+  });
+});
+
+describe('matchRecurringLinks', () => {
+  const r = {
+    id: 'r1',
+    name: 'iCloud',
+    type: 'EXPENSE',
+    amount: 4400,
+    accountId: 'a1',
+    toAccountId: null,
+    categoryId: null,
+    cycle: 'MONTHLY',
+    billingDay: 3,
+    startDate: '2026-11-30',
+    endDate: null,
+  } as Recurring;
+  const tx = (id: string, date: string, memo: string | null, over = {}) => ({
+    id,
+    date,
+    memo,
+    type: 'EXPENSE' as const,
+    amount: 4400,
+    accountId: 'a1',
+    toAccountId: null,
+    ...over,
+  });
+  const ids = (links: { transactionId: string }[]) => links.map((l) => l.transactionId);
+
+  it('시작일 이전이어도 출금일이나 같은 이름이면 연결한다', () => {
+    const links = matchRecurringLinks(
+      [r],
+      [tx('day', '2026-11-03', null), tx('name', '2026-10-20', ' iCloud ')],
+      new Map()
+    );
+    expect(ids(links).sort()).toEqual(['day', 'name']);
+  });
+
+  it('출금일도 이름도 다르거나 금액·계좌·유형이 다르면 연결하지 않는다', () => {
+    const links = matchRecurringLinks(
+      [r],
+      [
+        tx('other-day', '2026-11-05', '커피'),
+        tx('amount', '2026-11-03', null, { amount: 5000 }),
+        tx('account', '2026-11-03', null, { accountId: 'a2' }),
+        tx('type', '2026-11-03', null, { type: 'INCOME' }),
+      ],
+      new Map()
+    );
+    expect(links).toEqual([]);
+  });
+
+  it('이미 연결된 달에는 더 연결하지 않고, 한 달에 후보가 여럿이면 이름이 같은 쪽을 고른다', () => {
+    expect(
+      matchRecurringLinks([r], [tx('dup', '2026-11-03', null)], new Map([['r1', ['2026-11-03']]]))
+    ).toEqual([]);
+    const links = matchRecurringLinks(
+      [r],
+      [tx('day', '2026-11-03', null), tx('name', '2026-11-10', 'iCloud')],
+      new Map()
+    );
+    expect(ids(links)).toEqual(['name']);
+  });
+
+  it('매년 자동이체는 시작일의 달이 아니면 출금일로 보지 않고, 종료일 뒤도 연결하지 않는다', () => {
+    const yearly = { ...r, cycle: 'YEARLY', startDate: '2026-03-01' } as Recurring;
+    expect(matchRecurringLinks([yearly], [tx('m', '2026-11-03', null)], new Map())).toEqual([]);
+    expect(ids(matchRecurringLinks([yearly], [tx('m', '2025-03-03', null)], new Map()))).toEqual(['m']);
+    const ended = { ...r, endDate: '2026-10-31' };
+    expect(matchRecurringLinks([ended], [tx('m', '2026-11-03', null)], new Map())).toEqual([]);
+  });
+
+  it('이체는 받는 계좌까지 같아야 하고, 한 거래는 한 자동이체에만 연결한다', () => {
+    const t = { ...r, type: 'TRANSFER', toAccountId: 'a2' } as Recurring;
+    const row = (id: string, to: string) => tx(id, '2026-11-03', null, { type: 'TRANSFER', toAccountId: to });
+    expect(ids(matchRecurringLinks([t], [row('x', 'a3'), row('y', 'a2')], new Map()))).toEqual(['y']);
+    expect(matchRecurringLinks([r, { ...r, id: 'r2' }], [tx('one', '2026-11-03', null)], new Map())).toHaveLength(1);
   });
 });

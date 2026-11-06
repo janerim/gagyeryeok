@@ -105,6 +105,24 @@ export class SqliteTransactionRepository implements TransactionRepository {
     );
   }
 
+  async listUnlinked(): Promise<Transaction[]> {
+    const db = await getDB();
+    const rows = await db.getAllAsync<Row>(
+      'SELECT * FROM "transaction" WHERE recurring_id IS NULL AND deleted_at IS NULL'
+    );
+    return rows.map(toTransaction);
+  }
+
+  async linkToRecurring(id: string, recurringId: string): Promise<void> {
+    const db = await getDB();
+    await db.runAsync(
+      'UPDATE "transaction" SET recurring_id = ?, updated_at = ? WHERE id = ?',
+      recurringId,
+      nowISO(),
+      id
+    );
+  }
+
   async softDelete(id: string): Promise<void> {
     const db = await getDB();
     const now = nowISO();

@@ -1,5 +1,5 @@
 import { addDays, addYears, format, parseISO } from 'date-fns';
-import type { Recurring } from '@/types';
+import type { Recurring, Transaction } from '@/types';
 
 type Schedule = Pick<Recurring, 'cycle' | 'billingDay' | 'startDate' | 'endDate'>;
 
@@ -85,4 +85,57 @@ export function scheduledByDate<T extends Schedule>(rs: T[], from: string, to: s
     }
   }
   return map;
+}
+
+/** 이 날짜가 자동이체의 출금일인지. 시작일 이전 날짜도 본다 (등록 전에 직접 입력한 거래를 찾는 용도) */
+function isBillingDay(r: Pick<Recurring, 'cycle' | 'billingDay' | 'startDate'>, date: string): boolean {
+  const year = Number(date.slice(0, 4));
+  const month = Number(date.slice(5, 7));
+  if (r.cycle === 'YEARLY' && month !== Number(r.startDate.slice(5, 7))) return false;
+  return billingDate(year, month, r.billingDay) === date;
+}
+
+type LinkCandidate = Pick<
+  Transaction,
+  'id' | 'type' | 'amount' | 'date' | 'accountId' | 'toAccountId' | 'memo'
+>;
+
+/**
+ * 자동이체를 등록하기 전에 직접 입력한 거래를 찾아 어느 자동이체에 연결할지 정한다.
+ * 유형·금액·계좌가 같고, 메모가 자동이체 이름과 같거나 날짜가 출금일이어야 한다.
+ * 같은 주기에 이미 연결된 거래가 있으면 더 연결하지 않는다.
+ * linkedDates: 자동이체 id별로 연결된 거래 날짜 (삭제한 거래 제외)
+ */
+export function matchRecurringLinks(
+  recurrings: Recurring[],
+  unlinked: LinkCandidate[],
+  linkedDates: Map<string, string[]>
+): { transactionId: string; recurringId: string }[] {
+  const used = new Set<string>();
+  const links: { transactionId: string; recurringId: string }[] = [];
+  for (const r of recurrings) {
+    const taken = new Set((linkedDates.get(r.id) ?? []).map((d) => periodKey(r.cycle, d)));
+    const sameName = (t: LinkCandidate) => t.memo?.trim() === r.name.trim();
+    const candidates = unlinked
+      .filter(
+        (t) =>
+          !used.has(t.id) &&
+          t.type === r.type &&
+          t.amount === r.amount &&
+          t.accountId === r.accountId &&
+          (r.type !== 'TRANSFER' || t.toAccountId === r.toAccountId) &&
+          (!r.endDate || t.date <= r.endDate) &&
+          (sameName(t) || isBillingDay(r, t.date))
+      )
+      // 한 주기에 후보가 여럿이면 이름이 같은 거래를 먼저 고른다
+      .sort((a, b) => Number(sameName(b)) - Number(sameName(a)) || a.date.localeCompare(b.date));
+    for (const t of candidates) {
+      const period = periodKey(r.cycle, t.date);
+      if (taken.has(period)) continue;
+      taken.add(period);
+      used.add(t.id);
+      links.push({ transactionId: t.id, recurringId: r.id });
+    }
+  }
+  return links;
 }

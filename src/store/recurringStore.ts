@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { format } from 'date-fns';
 import { repositories } from '@/data/repositories';
-import { dueOccurrences, periodKey } from '@/domain/recurring';
+import { dueOccurrences, matchRecurringLinks, periodKey } from '@/domain/recurring';
 import type { Recurring, RecurringInput, Transaction } from '@/types';
 import { useTransactionStore } from './transactionStore';
 
@@ -77,8 +77,26 @@ function toTransactionInput(r: Recurring, date: string) {
   };
 }
 
+/** 자동이체 등록 전에 직접 입력한 거래를 연결한다. 연결한 건수 반환 */
+async function linkExisting(items: Recurring[]): Promise<number> {
+  if (items.length === 0) return 0;
+  const unlinked = await repositories.transaction.listUnlinked();
+  const linkedDates = new Map<string, string[]>();
+  for (const r of items) {
+    const txs = await repositories.transaction.listByRecurring(r.id);
+    linkedDates.set(r.id, txs.map((t) => t.date));
+  }
+  const links = matchRecurringLinks(items, unlinked, linkedDates);
+  for (const { transactionId, recurringId } of links) {
+    await repositories.transaction.linkToRecurring(transactionId, recurringId);
+  }
+  return links.length;
+}
+
 async function generate(items: Recurring[]): Promise<number> {
   const today = format(new Date(), 'yyyy-MM-dd');
+  // 연결을 먼저 해야 이미 직접 입력한 달의 거래를 또 만들지 않는다
+  const linked = await linkExisting(items);
   let created = 0;
   for (const r of items) {
     const generated = await repositories.transaction.recurringDates(r.id);
@@ -87,6 +105,6 @@ async function generate(items: Recurring[]): Promise<number> {
       created++;
     }
   }
-  if (created > 0) await useTransactionStore.getState().reload();
+  if (created > 0 || linked > 0) await useTransactionStore.getState().reload();
   return created;
 }

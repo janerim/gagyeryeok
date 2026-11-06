@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  backdatedStart,
   billingDate,
   dueOccurrences,
   matchRecurringLinks,
@@ -211,5 +212,27 @@ describe('matchRecurringLinks', () => {
     const row = (id: string, to: string) => tx(id, '2026-11-03', null, { type: 'TRANSFER', toAccountId: to });
     expect(ids(matchRecurringLinks([t], [row('x', 'a3'), row('y', 'a2')], new Map()))).toEqual(['y']);
     expect(matchRecurringLinks([r, { ...r, id: 'r2' }], [tx('one', '2026-11-03', null)], new Map())).toHaveLength(1);
+  });
+});
+
+describe('backdatedStart', () => {
+  it('오늘 등록했는데 이번 달 출금일이 지났으면 그 출금일로 당긴다', () => {
+    expect(backdatedStart('2026-11-03', 1, '2026-11-03')).toBe('2026-11-01');
+  });
+
+  it('출금일이 오늘이거나 아직 안 왔으면 그대로', () => {
+    expect(backdatedStart('2026-11-03', 3, '2026-11-03')).toBe('2026-11-03');
+    expect(backdatedStart('2026-11-03', 28, '2026-11-03')).toBe('2026-11-03');
+  });
+
+  it('시작일을 직접 고른 경우는 그대로', () => {
+    expect(backdatedStart('2026-12-01', 1, '2026-11-03')).toBe('2026-12-01');
+  });
+
+  it('당긴 시작일이면 이번 달 거래가 만들어진다', () => {
+    const startDate = backdatedStart('2026-11-03', 1, '2026-11-03');
+    expect(
+      dueOccurrences({ cycle: 'MONTHLY', billingDay: 1, startDate, endDate: null }, '2026-11-03', [])
+    ).toEqual(['2026-11-01']);
   });
 });

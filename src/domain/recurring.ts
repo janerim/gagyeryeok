@@ -139,3 +139,14 @@ export function matchRecurringLinks(
   }
   return links;
 }
+
+/**
+ * 새 자동이체의 실제 시작일. 시작일을 오늘 그대로 두었고 이번 달 출금일이 이미 지났으면
+ * 그 출금일로 당겨서, 뒤늦게 등록해도 이번 달 거래가 기록되게 한다.
+ * 시작일을 직접 다른 날로 고른 경우는 그대로 둔다.
+ */
+export function backdatedStart(startDate: string, billingDay: number, today: string): string {
+  if (startDate !== today) return startDate;
+  const billing = billingDate(Number(today.slice(0, 4)), Number(today.slice(5, 7)), billingDay);
+  return billing < today ? billing : startDate;
+}

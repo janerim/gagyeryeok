@@ -17,6 +17,9 @@ import { Chip } from '@/components/common/Chip';
 import { DateStepper } from '@/components/common/DateStepper';
 import { Field, inputStyle } from '@/components/common/Field';
 import { FormFooter } from '@/components/common/FormFooter';
+import { PickerSheet } from '@/components/common/PickerSheet';
+import { RecurringLinkCard } from '@/components/transaction/RecurringLinkCard';
+import { formatWon } from '@/domain/money';
 import { orderByRecentUse } from '@/domain/recent';
 import { useKeyboardInset } from '@/hooks/useKeyboardInset';
 import { useRecentUse } from '@/hooks/useRecentUse';
@@ -24,6 +27,7 @@ import { repositories } from '@/data/repositories';
 import { useShallow } from 'zustand/react/shallow';
 import { selectVisibleAccounts, useAccountStore } from '@/store/accountStore';
 import { useCategoryStore } from '@/store/categoryStore';
+import { useRecurringStore } from '@/store/recurringStore';
 import { useTransactionStore } from '@/store/transactionStore';
 import type { Account, TransactionInput, TransactionType } from '@/types';
 
@@ -39,7 +43,8 @@ export default function TransactionFormScreen() {
 
   const accounts = useAccountStore(useShallow(selectVisibleAccounts));
   const categories = useCategoryStore((s) => s.categories);
-  const { add, edit, remove } = useTransactionStore();
+  const recurrings = useRecurringStore((s) => s.items);
+  const { add, edit, remove, linkToRecurring, unlinkFromRecurring } = useTransactionStore();
 
   const [type, setType] = useState<TransactionType>('EXPENSE');
   const [amount, setAmount] = useState(0);
@@ -49,6 +54,8 @@ export default function TransactionFormScreen() {
   const [date, setDate] = useState(initialDate ?? format(new Date(), 'yyyy-MM-dd'));
   const [memo, setMemo] = useState('');
   const [saving, setSaving] = useState(false);
+  const [recurringId, setRecurringId] = useState<string | null>(null);
+  const [linkPicker, setLinkPicker] = useState(false);
 
   const recent = useRecentUse(type);
   const keyboard = useKeyboardInset();
@@ -73,6 +80,7 @@ export default function TransactionFormScreen() {
       setToAccountId(tx.toAccountId);
       setDate(tx.date);
       setMemo(tx.memo ?? '');
+      setRecurringId(tx.recurringId);
     });
   }, [id]);
 
@@ -119,6 +127,33 @@ export default function TransactionFormScreen() {
     }
   };
 
+  const linkable = recurrings.filter((r) => r.type === type);
+
+  const onLink = async (rid: string) => {
+    if (!id) return;
+    try {
+      await linkToRecurring(id, rid);
+      setRecurringId(rid);
+    } catch (e: any) {
+      Alert.alert('연결 실패', e?.message ?? String(e));
+    }
+  };
+
+  const onUnlink = () => {
+    if (!id) return;
+    Alert.alert('연결 해제', '이 거래를 자동이체에서 분리할까요?\n거래는 그대로 남고, 자동으로 다시 연결되지 않아요.', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '해제',
+        style: 'destructive',
+        onPress: () =>
+          unlinkFromRecurring(id)
+            .then(() => setRecurringId(null))
+            .catch((e) => Alert.alert('해제 실패', e?.message ?? String(e))),
+      },
+    ]);
+  };
+
   const onDelete = () => {
     if (!id) return;
     Alert.alert('삭제', '이 거래를 삭제할까요?', [
@@ -157,6 +192,18 @@ export default function TransactionFormScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
+        {isEdit && (
+          <RecurringLinkCard
+            recurringId={recurringId}
+            recurrings={recurrings}
+            canLink={linkable.length > 0}
+            // 자동이체를 고치면 이 거래도 바뀔 수 있어, 예전 값이 남은 이 화면은 닫고 넘어간다
+            onEdit={(rid) => router.replace({ pathname: '/recurring-form', params: { id: rid } })}
+            onUnlink={onUnlink}
+            onPressLink={() => setLinkPicker(true)}
+          />
+        )}
+
         {/* 유형 세그먼트 */}
         <View style={styles.segment}>
           {TX_TYPES.map((t) => {
@@ -237,6 +284,15 @@ export default function TransactionFormScreen() {
         saving={saving}
         onDelete={isEdit ? onDelete : undefined}
         keyboardOpen={keyboard.bottom > 0}
+      />
+
+      <PickerSheet
+        visible={linkPicker}
+        title="연결할 자동이체"
+        options={linkable.map((r) => ({ key: r.id, label: `${r.name} · ${formatWon(r.amount)}원` }))}
+        value={recurringId}
+        onSelect={(k) => k && onLink(k)}
+        onClose={() => setLinkPicker(false)}
       />
     </View>
   );

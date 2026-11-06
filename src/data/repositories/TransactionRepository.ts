@@ -8,10 +8,12 @@ export interface TransactionRepository {
   /** recurringId: 자동이체로 만든 거래면 그 자동이체 id */
   create(input: TransactionInput, recurringId?: string): Promise<Transaction>;
   update(id: string, input: TransactionInput): Promise<void>;
-  /** 자동이체에 연결되지 않은 거래 전체 (삭제 제외) */
+  /** 자동 연결 후보: 연결되지 않았고 사용자가 해제한 적도 없는 거래 (삭제 제외) */
   listUnlinked(): Promise<Transaction[]>;
   /** 직접 입력한 거래를 자동이체에 연결한다 */
   linkToRecurring(id: string, recurringId: string): Promise<void>;
+  /** 연결을 해제한다. 다시 자동 연결되지 않고, 그 주기 거래도 다시 만들어지지 않는다 */
+  unlinkFromRecurring(id: string): Promise<void>;
   softDelete(id: string): Promise<void>;
   /** 해당 유형에서 최근 사용한 카테고리 id, 최근 순 */
   recentCategoryIds(type: TransactionType, limit: number): Promise<string[]>;

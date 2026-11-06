@@ -117,4 +117,8 @@ export const MIGRATIONS: ((db: SQLiteDatabase) => Promise<void>)[] = [
       new Date().toISOString()
     );
   },
+  // v4: 사용자가 자동이체 연결을 해제한 거래. 다시 자동 연결하거나 그 주기 거래를 또 만들지 않기 위해 남긴다
+  async (db) => {
+    await db.execAsync('ALTER TABLE "transaction" ADD COLUMN unlinked_recurring_id TEXT');
+  },
 ];

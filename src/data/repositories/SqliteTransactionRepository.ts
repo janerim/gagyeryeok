@@ -108,7 +108,8 @@ export class SqliteTransactionRepository implements TransactionRepository {
   async listUnlinked(): Promise<Transaction[]> {
     const db = await getDB();
     const rows = await db.getAllAsync<Row>(
-      'SELECT * FROM "transaction" WHERE recurring_id IS NULL AND deleted_at IS NULL'
+      `SELECT * FROM "transaction"
+       WHERE recurring_id IS NULL AND unlinked_recurring_id IS NULL AND deleted_at IS NULL`
     );
     return rows.map(toTransaction);
   }
@@ -116,8 +117,19 @@ export class SqliteTransactionRepository implements TransactionRepository {
   async linkToRecurring(id: string, recurringId: string): Promise<void> {
     const db = await getDB();
     await db.runAsync(
-      'UPDATE "transaction" SET recurring_id = ?, updated_at = ? WHERE id = ?',
+      'UPDATE "transaction" SET recurring_id = ?, unlinked_recurring_id = NULL, updated_at = ? WHERE id = ?',
       recurringId,
+      nowISO(),
+      id
+    );
+  }
+
+  async unlinkFromRecurring(id: string): Promise<void> {
+    const db = await getDB();
+    await db.runAsync(
+      `UPDATE "transaction"
+       SET unlinked_recurring_id = recurring_id, recurring_id = NULL, updated_at = ?
+       WHERE id = ? AND recurring_id IS NOT NULL`,
       nowISO(),
       id
     );
@@ -197,7 +209,8 @@ export class SqliteTransactionRepository implements TransactionRepository {
   async recurringDates(recurringId: string): Promise<string[]> {
     const db = await getDB();
     const rows = await db.getAllAsync<{ date: string }>(
-      'SELECT date FROM "transaction" WHERE recurring_id = ?',
+      'SELECT date FROM "transaction" WHERE recurring_id = ? OR unlinked_recurring_id = ?',
+      recurringId,
       recurringId
     );
     return rows.map((r) => r.date);

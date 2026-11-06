@@ -12,6 +12,8 @@ type TransactionStore = {
   add: (input: TransactionInput) => Promise<Transaction>;
   edit: (id: string, input: TransactionInput) => Promise<void>;
   remove: (id: string) => Promise<void>;
+  linkToRecurring: (id: string, recurringId: string) => Promise<void>;
+  unlinkFromRecurring: (id: string) => Promise<void>;
 };
 
 export const useTransactionStore = create<TransactionStore>((set, get) => ({
@@ -40,6 +42,14 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
   },
   remove: async (id) => {
     await repositories.transaction.softDelete(id);
+    await get().reload();
+  },
+  linkToRecurring: async (id, recurringId) => {
+    await repositories.transaction.linkToRecurring(id, recurringId);
+    await get().reload();
+  },
+  unlinkFromRecurring: async (id) => {
+    await repositories.transaction.unlinkFromRecurring(id);
     await get().reload();
   },
 }));

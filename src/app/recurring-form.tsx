@@ -9,7 +9,7 @@ import { Chip } from '@/components/common/Chip';
 import { DateStepper } from '@/components/common/DateStepper';
 import { Field, inputStyle } from '@/components/common/Field';
 import { FormFooter } from '@/components/common/FormFooter';
-import { nextOccurrence, scheduleLabel } from '@/domain/recurring';
+import { backdatedStart, nextOccurrence, scheduleLabel } from '@/domain/recurring';
 import { useKeyboardInset } from '@/hooks/useKeyboardInset';
 import { selectVisibleAccounts, useAccountStore } from '@/store/accountStore';
 import { selectActiveCategories, useCategoryStore } from '@/store/categoryStore';
@@ -80,8 +80,13 @@ export default function RecurringFormScreen() {
     if (!validDay) return null;
     const schedule = { cycle, billingDay, startDate, endDate: existing?.endDate ?? null };
     // 시작일이 미래면 nextOccurrence가 시작일부터 찾아 준다
-    return { label: scheduleLabel(schedule), next: nextOccurrence(schedule, today) };
-  }, [validDay, cycle, billingDay, startDate, today, existing?.endDate]);
+    const start = isEdit ? startDate : backdatedStart(startDate, billingDay, today);
+    return {
+      label: scheduleLabel(schedule),
+      next: nextOccurrence(schedule, today),
+      backdated: start !== startDate ? start : null,
+    };
+  }, [validDay, cycle, billingDay, startDate, today, existing?.endDate, isEdit]);
 
   const onSave = async () => {
     if (!name.trim()) return Alert.alert('이름을 입력해 주세요');
@@ -104,7 +109,7 @@ export default function RecurringFormScreen() {
       categoryId: type === 'TRANSFER' ? null : categoryId,
       cycle,
       billingDay,
-      startDate,
+      startDate: isEdit ? startDate : backdatedStart(startDate, billingDay, today),
       endDate: existing?.endDate ?? null,
     };
     setSaving(true);
@@ -300,6 +305,11 @@ export default function RecurringFormScreen() {
             <Text style={styles.previewSub}>
               시작일 이후 {dayLabel}이 되면 앱을 열 때 자동으로 기록돼요.
             </Text>
+            {preview.backdated && (
+              <Text style={styles.previewSub}>
+                {format(parseISO(preview.backdated), 'M월 d일')} 거래도 저장할 때 함께 기록돼요.
+              </Text>
+            )}
           </View>
         )}
 

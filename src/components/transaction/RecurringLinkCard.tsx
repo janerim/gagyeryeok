@@ -10,31 +10,45 @@ type Props = {
   onEdit: (recurringId: string) => void;
   onUnlink: () => void;
   onPressLink: () => void;
+  /** 이 거래 내용으로 새 자동이체를 만든다 */
+  onCreate: () => void;
   /** 연결할 수 있는 자동이체가 있는지 */
   canLink: boolean;
 };
 
-/** 거래 상세 위쪽: 자동이체 거래임을 알리고 수정·해제, 아니면 연결 */
+/** 거래 상세 위쪽: 자동이체 거래임을 알리고 수정·해제, 아니면 새로 만들기·연결 */
 export function RecurringLinkCard({
   recurringId,
   recurrings,
   onEdit,
   onUnlink,
   onPressLink,
+  onCreate,
   canLink,
 }: Props) {
   if (!recurringId) {
-    if (!canLink) return null;
     return (
-      <Pressable
-        onPress={onPressLink}
-        style={({ pressed }) => [styles.linkRow, pressed && { opacity: 0.6 }]}
-        accessibilityRole="button"
-      >
-        <Ionicons name="repeat" size={15} color={Colors.primaryDark} />
-        <Text style={styles.linkText}>자동이체 연결</Text>
-        <Ionicons name="chevron-forward" size={15} color={Colors.primaryDark} />
-      </Pressable>
+      <View style={styles.linkRows}>
+        <Pressable
+          onPress={onCreate}
+          style={({ pressed }) => [styles.linkRow, pressed && { opacity: 0.6 }]}
+          accessibilityRole="button"
+        >
+          <Ionicons name="add" size={15} color={Colors.primaryDark} />
+          <Text style={styles.linkText}>이 거래로 자동이체 만들기</Text>
+        </Pressable>
+        {canLink && (
+          <Pressable
+            onPress={onPressLink}
+            style={({ pressed }) => [styles.linkRow, pressed && { opacity: 0.6 }]}
+            accessibilityRole="button"
+          >
+            <Ionicons name="repeat" size={15} color={Colors.primaryDark} />
+            <Text style={styles.linkText}>자동이체 연결</Text>
+            <Ionicons name="chevron-forward" size={15} color={Colors.primaryDark} />
+          </Pressable>
+        )}
+      </View>
     );
   }
 
@@ -92,6 +106,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   secondaryBtnText: { fontSize: 13, fontWeight: '700', color: Colors.primaryDark },
+  linkRows: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   linkRow: {
     flexDirection: 'row',
     alignItems: 'center',

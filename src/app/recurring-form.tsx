@@ -9,12 +9,19 @@ import { Chip } from '@/components/common/Chip';
 import { DateStepper } from '@/components/common/DateStepper';
 import { Field, inputStyle } from '@/components/common/Field';
 import { FormFooter } from '@/components/common/FormFooter';
-import { backdatedStart, nextOccurrence, scheduleLabel, WEEKDAY_NAMES } from '@/domain/recurring';
+import { repositories } from '@/data/repositories';
+import {
+  backdatedStart,
+  dueOccurrences,
+  nextOccurrence,
+  scheduleLabel,
+  WEEKDAY_NAMES,
+} from '@/domain/recurring';
 import { useKeyboardInset } from '@/hooks/useKeyboardInset';
 import { selectVisibleAccounts, useAccountStore } from '@/store/accountStore';
 import { selectActiveCategories, useCategoryStore } from '@/store/categoryStore';
 import { useRecurringStore } from '@/store/recurringStore';
-import type { RecurringCycle, RecurringInput, RecurringType } from '@/types';
+import type { RecurringCycle, RecurringInput, RecurringType, Transaction } from '@/types';
 
 const TYPE_OPTIONS: { key: RecurringType; label: string; color: string }[] = [
   { key: 'EXPENSE', label: '지출', color: Colors.expense },
@@ -36,7 +43,8 @@ const CURRENT_PERIOD: Record<RecurringCycle, string> = {
 };
 
 export default function RecurringFormScreen() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  // fromTx: 거래 상세의 '이 거래로 자동이체 만들기'에서 넘어온 거래 id
+  const { id, fromTx } = useLocalSearchParams<{ id?: string; fromTx?: string }>();
   const isEdit = !!id;
   const existing = useRecurringStore((s) => s.items.find((r) => r.id === id));
   const { add, edit, remove, currentPeriodTransactions, applyToTransactions } = useRecurringStore();
@@ -55,6 +63,7 @@ export default function RecurringFormScreen() {
   const [weekday, setWeekday] = useState(getISODay(new Date()));
   const [startDate, setStartDate] = useState(today);
   const [saving, setSaving] = useState(false);
+  const [source, setSource] = useState<Transaction | null>(null);
   const keyboard = useKeyboardInset();
 
   const isIncome = type === 'INCOME';
@@ -85,6 +94,25 @@ export default function RecurringFormScreen() {
     setStartDate(existing.startDate);
   }, [existing]);
 
+  // 거래로 만들기: 그 거래 내용으로 채우고, 시작일은 거래 날짜 (오늘까지 빈 주기는 저장할 때 채워진다)
+  useEffect(() => {
+    if (!fromTx || isEdit) return;
+    repositories.transaction.findById(fromTx).then((tx) => {
+      if (!tx) return;
+      const category = useCategoryStore.getState().categories.find((c) => c.id === tx.categoryId);
+      setSource(tx);
+      setName(tx.memo?.trim() || category?.name || '');
+      setType(tx.type);
+      setAmount(tx.amount);
+      setCategoryId(tx.type === 'TRANSFER' ? null : tx.categoryId);
+      setAccountId(tx.accountId);
+      setToAccountId(tx.type === 'TRANSFER' ? tx.toAccountId : null);
+      setBillingDayText(String(Number(tx.date.slice(8, 10))));
+      setWeekday(getISODay(parseISO(tx.date)));
+      setStartDate(tx.date);
+    });
+  }, [fromTx, isEdit]);
+
   const billingDay = isWeekly ? weekday : Number(billingDayText);
   const validDay = isWeekly || (Number.isInteger(billingDay) && billingDay >= 1 && billingDay <= 31);
 
@@ -93,12 +121,16 @@ export default function RecurringFormScreen() {
     const schedule = { cycle, billingDay, startDate, endDate: existing?.endDate ?? null };
     // 시작일이 미래면 nextOccurrence가 시작일부터 찾아 준다
     const start = isEdit ? startDate : backdatedStart(startDate, { cycle, billingDay }, today);
+    // 새 자동이체를 저장하면 바로 기록될 지난 출금일. 원래 거래의 주기는 그 거래를 연결하므로 뺀다
+    const past = isEdit
+      ? []
+      : dueOccurrences({ ...schedule, startDate: start }, today, source ? [source.date] : []);
     return {
       label: scheduleLabel(schedule),
       next: nextOccurrence(schedule, today),
-      backdated: start !== startDate ? start : null,
+      past,
     };
-  }, [validDay, cycle, billingDay, startDate, today, existing?.endDate, isEdit]);
+  }, [validDay, cycle, billingDay, startDate, today, existing?.endDate, isEdit, source]);
 
   const onSave = async () => {
     if (!name.trim()) return Alert.alert('이름을 입력해 주세요');
@@ -127,7 +159,7 @@ export default function RecurringFormScreen() {
     setSaving(true);
     try {
       if (!isEdit || !id) {
-        await add(input);
+        await add(input, source?.id);
         return router.back();
       }
       await edit(id, input);
@@ -330,9 +362,22 @@ export default function RecurringFormScreen() {
             <Text style={styles.previewSub}>
               시작일 이후 {dayLabel}이 되면 앱을 열 때 자동으로 기록돼요.
             </Text>
-            {preview.backdated && (
+            {source && (
               <Text style={styles.previewSub}>
-                {format(parseISO(preview.backdated), 'M월 d일')} 거래도 저장할 때 함께 기록돼요.
+                {format(parseISO(source.date), 'M월 d일')} 거래는 이 자동이체에 연결돼요.
+              </Text>
+            )}
+            {preview.past.length === 1 && (
+              <Text style={styles.previewSub}>
+                {format(parseISO(preview.past[0]), 'M월 d일')} 거래도 저장할 때 함께 기록돼요.
+              </Text>
+            )}
+            {preview.past.length > 1 && (
+              <Text style={styles.previewSub}>
+                {`지난 ${dayLabel} ${preview.past.length}번(${format(parseISO(preview.past[0]), 'M월 d일')} ~ ${format(
+                  parseISO(preview.past[preview.past.length - 1]),
+                  'M월 d일'
+                )})도 저장할 때 기록돼요. 이미 적어 둔 같은 거래가 있으면 새로 만들지 않아요.`}
               </Text>
             )}
           </View>

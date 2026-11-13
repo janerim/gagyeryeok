@@ -201,6 +201,8 @@ export default function TransactionFormScreen() {
             onEdit={(rid) => router.replace({ pathname: '/recurring-form', params: { id: rid } })}
             onUnlink={onUnlink}
             onPressLink={() => setLinkPicker(true)}
+            // 저장된 거래 내용으로 등록 화면을 채운다. 이 화면에서 고치고 저장하지 않은 내용은 넘어가지 않는다
+            onCreate={() => router.replace({ pathname: '/recurring-form', params: { fromTx: id } })}
           />
         )}
 

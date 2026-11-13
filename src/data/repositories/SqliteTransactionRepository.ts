@@ -116,8 +116,14 @@ export class SqliteTransactionRepository implements TransactionRepository {
 
   async linkToRecurring(id: string, recurringId: string): Promise<void> {
     const db = await getDB();
+    // 다른 자동이체에서 해제한 표시는 남겨 둔다. 지우면 그 자동이체가 이 주기 거래를 다시 만든다
     await db.runAsync(
-      'UPDATE "transaction" SET recurring_id = ?, unlinked_recurring_id = NULL, updated_at = ? WHERE id = ?',
+      `UPDATE "transaction"
+       SET recurring_id = ?,
+           unlinked_recurring_id = CASE WHEN unlinked_recurring_id = ? THEN NULL ELSE unlinked_recurring_id END,
+           updated_at = ?
+       WHERE id = ?`,
+      recurringId,
       recurringId,
       nowISO(),
       id

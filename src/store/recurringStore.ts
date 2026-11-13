@@ -9,7 +9,8 @@ type RecurringStore = {
   items: Recurring[];
   loaded: boolean;
   load: () => Promise<void>;
-  add: (input: RecurringInput) => Promise<void>;
+  /** linkTransactionId: 거래로 만든 자동이체면 그 거래. 바로 연결해 같은 주기 거래를 또 만들지 않는다 */
+  add: (input: RecurringInput, linkTransactionId?: string) => Promise<void>;
   edit: (id: string, input: RecurringInput) => Promise<void>;
   remove: (id: string) => Promise<void>;
   /** 오늘까지 출금일이 지났는데 아직 거래가 없는 자동이체를 거래로 만든다. 만든 건수 반환 */
@@ -30,8 +31,12 @@ export const useRecurringStore = create<RecurringStore>((set, get) => ({
     const items = await repositories.recurring.list();
     set({ items, loaded: true });
   },
-  add: async (input) => {
-    await repositories.recurring.create(input);
+  add: async (input, linkTransactionId) => {
+    const created = await repositories.recurring.create(input);
+    // 자동 기록(generateDue)보다 먼저 연결해야 그 거래의 주기를 빈 것으로 보지 않는다
+    if (linkTransactionId) {
+      await useTransactionStore.getState().linkToRecurring(linkTransactionId, created.id);
+    }
     await get().load();
     await get().generateDue();
   },

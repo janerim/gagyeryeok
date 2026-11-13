@@ -10,7 +10,7 @@ export interface TransactionRepository {
   update(id: string, input: TransactionInput): Promise<void>;
   /** 자동 연결 후보: 연결되지 않았고 사용자가 해제한 적도 없는 거래 (삭제 제외) */
   listUnlinked(): Promise<Transaction[]>;
-  /** 직접 입력한 거래를 자동이체에 연결한다 */
+  /** 직접 입력한 거래를 자동이체에 연결한다. 다른 자동이체에서 해제한 표시는 남긴다 */
   linkToRecurring(id: string, recurringId: string): Promise<void>;
   /** 연결을 해제한다. 다시 자동 연결되지 않고, 그 주기 거래도 다시 만들어지지 않는다 */
   unlinkFromRecurring(id: string): Promise<void>;

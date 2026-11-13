@@ -1,10 +1,16 @@
-import { addDays, addYears, format, parseISO } from 'date-fns';
+import { addDays, addYears, format, getISODay, parseISO, startOfWeek } from 'date-fns';
 import type { Recurring, Transaction } from '@/types';
 
 type Schedule = Pick<Recurring, 'cycle' | 'billingDay' | 'startDate' | 'endDate'>;
 
+/** 매주 자동이체의 요일 이름. billingDay 1(월)~7(일) 순서 */
+export const WEEKDAY_NAMES = ['월', '화', '수', '목', '금', '토', '일'];
+
 const pad = (n: number) => String(n).padStart(2, '0');
 const daysInMonth = (year: number, month: number) => new Date(year, month, 0).getDate();
+const toKey = (d: Date) => format(d, 'yyyy-MM-dd');
+/** 그 날짜가 속한 주의 월요일 (달력과 같이 월요일 시작) */
+const mondayOf = (date: string) => startOfWeek(parseISO(date), { weekStartsOn: 1 });
 
 /** year년 month(1~12)월의 출금일. 31일처럼 없는 날짜는 그 달 말일로 보정 */
 export function billingDate(year: number, month: number, billingDay: number): string {
@@ -16,6 +22,16 @@ export function occurrencesBetween(r: Schedule, from: string, to: string): strin
   const lo = from > r.startDate ? from : r.startDate;
   const hi = r.endDate && r.endDate < to ? r.endDate : to;
   if (lo > hi) return [];
+
+  if (r.cycle === 'WEEKLY') {
+    // lo 이후 첫 그 요일부터 7일씩
+    const first = parseISO(lo);
+    const out: string[] = [];
+    for (let d = addDays(first, (r.billingDay - getISODay(first) + 7) % 7); toKey(d) <= hi; d = addDays(d, 7)) {
+      out.push(toKey(d));
+    }
+    return out;
+  }
 
   const startMonth = Number(r.startDate.slice(5, 7));
   let y = Number(lo.slice(0, 4));
@@ -39,8 +55,12 @@ export function occurrencesBetween(r: Schedule, from: string, to: string): strin
   return out;
 }
 
-/** 중복 판단 단위: 매월은 YYYY-MM, 매년은 YYYY. 출금일을 바꿔도 같은 달에 두 번 생기지 않게 */
+/**
+ * 중복 판단 단위: 매주는 그 주 월요일 날짜, 매월은 YYYY-MM, 매년은 YYYY.
+ * 출금일(요일)을 바꿔도 같은 주기에 두 번 생기지 않게
+ */
 export function periodKey(cycle: Recurring['cycle'], date: string): string {
+  if (cycle === 'WEEKLY') return toKey(mondayOf(date));
   return cycle === 'MONTHLY' ? date.slice(0, 7) : date.slice(0, 4);
 }
 
@@ -68,8 +88,9 @@ export function monthTotal(rs: (Schedule & Pick<Recurring, 'amount'>)[], month: 
   return rs.reduce((sum, r) => sum + r.amount * occurrencesBetween(r, from, to).length, 0);
 }
 
-/** 예: "매월 25일", "매월 말일", "매년 3월 5일" */
+/** 예: "매주 수요일", "매월 25일", "매월 말일", "매년 3월 5일" */
 export function scheduleLabel(r: Pick<Recurring, 'cycle' | 'billingDay' | 'startDate'>): string {
+  if (r.cycle === 'WEEKLY') return `매주 ${WEEKDAY_NAMES[r.billingDay - 1]}요일`;
   const day = r.billingDay >= 31 ? '말일' : `${r.billingDay}일`;
   return r.cycle === 'MONTHLY' ? `매월 ${day}` : `매년 ${Number(r.startDate.slice(5, 7))}월 ${day}`;
 }
@@ -89,6 +110,7 @@ export function scheduledByDate<T extends Schedule>(rs: T[], from: string, to: s
 
 /** 이 날짜가 자동이체의 출금일인지. 시작일 이전 날짜도 본다 (등록 전에 직접 입력한 거래를 찾는 용도) */
 function isBillingDay(r: Pick<Recurring, 'cycle' | 'billingDay' | 'startDate'>, date: string): boolean {
+  if (r.cycle === 'WEEKLY') return getISODay(parseISO(date)) === r.billingDay;
   const year = Number(date.slice(0, 4));
   const month = Number(date.slice(5, 7));
   if (r.cycle === 'YEARLY' && month !== Number(r.startDate.slice(5, 7))) return false;
@@ -141,12 +163,19 @@ export function matchRecurringLinks(
 }
 
 /**
- * 새 자동이체의 실제 시작일. 시작일을 오늘 그대로 두었고 이번 달 출금일이 이미 지났으면
- * 그 출금일로 당겨서, 뒤늦게 등록해도 이번 달 거래가 기록되게 한다.
+ * 새 자동이체의 실제 시작일. 시작일을 오늘 그대로 두었고 이번 주기(매주: 이번 주, 그 외: 이번 달)의
+ * 출금일이 이미 지났으면 그 출금일로 당겨서, 뒤늦게 등록해도 이번 주기 거래가 기록되게 한다.
  * 시작일을 직접 다른 날로 고른 경우는 그대로 둔다.
  */
-export function backdatedStart(startDate: string, billingDay: number, today: string): string {
+export function backdatedStart(
+  startDate: string,
+  r: Pick<Recurring, 'cycle' | 'billingDay'>,
+  today: string
+): string {
   if (startDate !== today) return startDate;
-  const billing = billingDate(Number(today.slice(0, 4)), Number(today.slice(5, 7)), billingDay);
+  const billing =
+    r.cycle === 'WEEKLY'
+      ? toKey(addDays(mondayOf(today), r.billingDay - 1))
+      : billingDate(Number(today.slice(0, 4)), Number(today.slice(5, 7)), r.billingDay);
   return billing < today ? billing : startDate;
 }

@@ -217,22 +217,112 @@ describe('matchRecurringLinks', () => {
 
 describe('backdatedStart', () => {
   it('오늘 등록했는데 이번 달 출금일이 지났으면 그 출금일로 당긴다', () => {
-    expect(backdatedStart('2026-11-03', 1, '2026-11-03')).toBe('2026-11-01');
+    expect(backdatedStart('2026-11-03', monthly(1), '2026-11-03')).toBe('2026-11-01');
   });
 
   it('출금일이 오늘이거나 아직 안 왔으면 그대로', () => {
-    expect(backdatedStart('2026-11-03', 3, '2026-11-03')).toBe('2026-11-03');
-    expect(backdatedStart('2026-11-03', 28, '2026-11-03')).toBe('2026-11-03');
+    expect(backdatedStart('2026-11-03', monthly(3), '2026-11-03')).toBe('2026-11-03');
+    expect(backdatedStart('2026-11-03', monthly(28), '2026-11-03')).toBe('2026-11-03');
   });
 
   it('시작일을 직접 고른 경우는 그대로', () => {
-    expect(backdatedStart('2026-12-01', 1, '2026-11-03')).toBe('2026-12-01');
+    expect(backdatedStart('2026-12-01', monthly(1), '2026-11-03')).toBe('2026-12-01');
   });
 
   it('당긴 시작일이면 이번 달 거래가 만들어진다', () => {
-    const startDate = backdatedStart('2026-11-03', 1, '2026-11-03');
+    const startDate = backdatedStart('2026-11-03', monthly(1), '2026-11-03');
     expect(
       dueOccurrences({ cycle: 'MONTHLY', billingDay: 1, startDate, endDate: null }, '2026-11-03', [])
     ).toEqual(['2026-11-01']);
+  });
+});
+
+// 매주: billingDay 는 요일 (1 월요일 ~ 7 일요일). 2026-11-02 가 월요일, 2026-11-13 이 금요일
+describe('매주 자동이체', () => {
+  const weekly = (weekday: number, startDate = '2026-01-01', endDate: string | null = null) => ({
+    cycle: 'WEEKLY' as const,
+    billingDay: weekday,
+    startDate,
+    endDate,
+  });
+
+  it('그 요일마다 출금일이 생기고, 시작일 이전은 제외한다', () => {
+    expect(occurrencesBetween(weekly(3), '2026-11-01', '2026-11-30')).toEqual([
+      '2026-11-04',
+      '2026-11-11',
+      '2026-11-18',
+      '2026-11-25',
+    ]);
+    expect(occurrencesBetween(weekly(3, '2026-11-10'), '2026-11-01', '2026-11-30')).toEqual([
+      '2026-11-11',
+      '2026-11-18',
+      '2026-11-25',
+    ]);
+    // 범위 첫날이 그 요일이면 첫날도 포함 (11월 1일은 일요일)
+    expect(occurrencesBetween(weekly(7), '2026-11-01', '2026-11-15')).toEqual([
+      '2026-11-01',
+      '2026-11-08',
+      '2026-11-15',
+    ]);
+  });
+
+  it('같은 주(월~일)에 이미 만든 거래가 있으면 다시 만들지 않는다', () => {
+    // 11/4(수) 주에는 11/5 에 이미 기록됨 → 11/11 만 만든다
+    expect(dueOccurrences(weekly(3, '2026-11-01'), '2026-11-13', ['2026-11-05'])).toEqual([
+      '2026-11-11',
+    ]);
+    // 일요일 거래는 그 앞 월요일의 주에 속한다
+    expect(dueOccurrences(weekly(1, '2026-11-01'), '2026-11-13', ['2026-11-08'])).toEqual([
+      '2026-11-09',
+    ]);
+  });
+
+  it('다음 출금일, 문구, 그 달 합계', () => {
+    expect(nextOccurrence(weekly(5), '2026-11-13')).toBe('2026-11-20');
+    expect(scheduleLabel(weekly(3))).toBe('매주 수요일');
+    expect(scheduleLabel(weekly(7))).toBe('매주 일요일');
+    // 11월은 수요일 4번, 일요일 5번
+    expect(monthTotal([{ ...weekly(3), amount: 10_000 }], '2026-11')).toBe(40_000);
+    expect(monthTotal([{ ...weekly(7), amount: 10_000 }], '2026-11')).toBe(50_000);
+  });
+
+  it('직접 입력한 거래는 그 요일이거나 이름이 같으면 연결하고, 한 주에 하나만 연결한다', () => {
+    const r = {
+      id: 'w1',
+      name: '용돈',
+      type: 'TRANSFER',
+      amount: 50_000,
+      accountId: 'a1',
+      toAccountId: 'a2',
+      categoryId: null,
+      ...weekly(1, '2026-11-30'),
+    } as Recurring;
+    const tx = (id: string, date: string, memo: string | null) => ({
+      id,
+      date,
+      memo,
+      type: 'TRANSFER' as const,
+      amount: 50_000,
+      accountId: 'a1',
+      toAccountId: 'a2',
+    });
+    const links = matchRecurringLinks(
+      [r],
+      [
+        tx('mon', '2026-11-09', null),
+        tx('same-week', '2026-11-10', null), // 화요일, 이름도 다름
+        tx('name', '2026-11-04', '용돈'), // 수요일이지만 이름이 같음
+      ],
+      new Map()
+    );
+    expect(links.map((l) => l.transactionId).sort()).toEqual(['mon', 'name']);
+  });
+
+  it('오늘 등록했는데 이번 주 출금 요일이 지났으면 그날로 당긴다', () => {
+    expect(backdatedStart('2026-11-13', weekly(1), '2026-11-13')).toBe('2026-11-09');
+    expect(backdatedStart('2026-11-13', weekly(5), '2026-11-13')).toBe('2026-11-13');
+    expect(backdatedStart('2026-11-13', weekly(7), '2026-11-13')).toBe('2026-11-13');
+    const startDate = backdatedStart('2026-11-13', weekly(1), '2026-11-13');
+    expect(dueOccurrences({ ...weekly(1), startDate }, '2026-11-13', [])).toEqual(['2026-11-09']);
   });
 });

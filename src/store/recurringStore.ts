@@ -14,7 +14,7 @@ type RecurringStore = {
   remove: (id: string) => Promise<void>;
   /** 오늘까지 출금일이 지났는데 아직 거래가 없는 자동이체를 거래로 만든다. 만든 건수 반환 */
   generateDue: () => Promise<number>;
-  /** 이번 주기(매월: 이번 달, 매년: 올해)에 이 자동이체로 이미 기록된 거래 */
+  /** 이번 주기(매주: 이번 주, 매월: 이번 달, 매년: 올해)에 이 자동이체로 이미 기록된 거래 */
   currentPeriodTransactions: (r: Recurring) => Promise<Transaction[]>;
   /** 이미 기록된 거래를 자동이체의 현재 내용으로 맞춘다. 날짜는 그대로 */
   applyToTransactions: (r: Recurring, txs: Transaction[]) => Promise<void>;

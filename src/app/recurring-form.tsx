@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { format, parseISO } from 'date-fns';
+import { format, getISODay, parseISO } from 'date-fns';
 import { useShallow } from 'zustand/react/shallow';
 import { Colors } from '@/constants/colors';
 import { AmountInput } from '@/components/common/AmountInput';
@@ -9,7 +9,7 @@ import { Chip } from '@/components/common/Chip';
 import { DateStepper } from '@/components/common/DateStepper';
 import { Field, inputStyle } from '@/components/common/Field';
 import { FormFooter } from '@/components/common/FormFooter';
-import { backdatedStart, nextOccurrence, scheduleLabel } from '@/domain/recurring';
+import { backdatedStart, nextOccurrence, scheduleLabel, WEEKDAY_NAMES } from '@/domain/recurring';
 import { useKeyboardInset } from '@/hooks/useKeyboardInset';
 import { selectVisibleAccounts, useAccountStore } from '@/store/accountStore';
 import { selectActiveCategories, useCategoryStore } from '@/store/categoryStore';
@@ -23,9 +23,17 @@ const TYPE_OPTIONS: { key: RecurringType; label: string; color: string }[] = [
 ];
 
 const CYCLE_OPTIONS: { key: RecurringCycle; label: string }[] = [
+  { key: 'WEEKLY', label: '매주' },
   { key: 'MONTHLY', label: '매월' },
   { key: 'YEARLY', label: '매년' },
 ];
+
+/** 이번 주기를 가리키는 말 (이미 기록된 거래를 같이 고칠지 물을 때) */
+const CURRENT_PERIOD: Record<RecurringCycle, string> = {
+  WEEKLY: '이번 주',
+  MONTHLY: '이번 달',
+  YEARLY: '올해',
+};
 
 export default function RecurringFormScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -43,6 +51,8 @@ export default function RecurringFormScreen() {
   const [toAccountId, setToAccountId] = useState<string | null>(null);
   const [cycle, setCycle] = useState<RecurringCycle>('MONTHLY');
   const [billingDayText, setBillingDayText] = useState(String(new Date().getDate()));
+  // 매주일 때의 요일 1(월)~7(일). 처음에는 오늘 요일
+  const [weekday, setWeekday] = useState(getISODay(new Date()));
   const [startDate, setStartDate] = useState(today);
   const [saving, setSaving] = useState(false);
   const keyboard = useKeyboardInset();
@@ -52,7 +62,8 @@ export default function RecurringFormScreen() {
     useShallow(selectActiveCategories(isIncome ? 'INCOME' : 'EXPENSE'))
   );
   const accountLabel = isIncome ? '입금 계좌' : '출금 계좌';
-  const dayLabel = isIncome ? '입금일' : '출금일';
+  const isWeekly = cycle === 'WEEKLY';
+  const dayLabel = `${isIncome ? '입금' : '출금'}${isWeekly ? ' 요일' : '일'}`;
 
   const changeType = (t: RecurringType) => {
     if (t === type) return;
@@ -69,18 +80,19 @@ export default function RecurringFormScreen() {
     setAccountId(existing.accountId);
     setToAccountId(existing.toAccountId);
     setCycle(existing.cycle);
-    setBillingDayText(String(existing.billingDay));
+    if (existing.cycle === 'WEEKLY') setWeekday(existing.billingDay);
+    else setBillingDayText(String(existing.billingDay));
     setStartDate(existing.startDate);
   }, [existing]);
 
-  const billingDay = Number(billingDayText);
-  const validDay = Number.isInteger(billingDay) && billingDay >= 1 && billingDay <= 31;
+  const billingDay = isWeekly ? weekday : Number(billingDayText);
+  const validDay = isWeekly || (Number.isInteger(billingDay) && billingDay >= 1 && billingDay <= 31);
 
   const preview = useMemo(() => {
     if (!validDay) return null;
     const schedule = { cycle, billingDay, startDate, endDate: existing?.endDate ?? null };
     // 시작일이 미래면 nextOccurrence가 시작일부터 찾아 준다
-    const start = isEdit ? startDate : backdatedStart(startDate, billingDay, today);
+    const start = isEdit ? startDate : backdatedStart(startDate, { cycle, billingDay }, today);
     return {
       label: scheduleLabel(schedule),
       next: nextOccurrence(schedule, today),
@@ -109,7 +121,7 @@ export default function RecurringFormScreen() {
       categoryId: type === 'TRANSFER' ? null : categoryId,
       cycle,
       billingDay,
-      startDate: isEdit ? startDate : backdatedStart(startDate, billingDay, today),
+      startDate: isEdit ? startDate : backdatedStart(startDate, { cycle, billingDay }, today),
       endDate: existing?.endDate ?? null,
     };
     setSaving(true);
@@ -125,7 +137,7 @@ export default function RecurringFormScreen() {
       if (!updated || txs.length === 0) return router.back();
       Alert.alert(
         '이미 기록된 거래',
-        `${cycle === 'MONTHLY' ? '이번 달' : '올해'}에 이미 기록된 거래(${txs
+        `${CURRENT_PERIOD[cycle]}에 이미 기록된 거래(${txs
           .map((t) => format(parseISO(t.date), 'M/d'))
           .join(', ')})도 바꿀까요?`,
         [
@@ -271,17 +283,30 @@ export default function RecurringFormScreen() {
         </Field>
 
         <Field label={dayLabel}>
-          <View style={styles.dayRow}>
-            <TextInput
-              style={[inputStyle, styles.dayInput]}
-              value={billingDayText}
-              onChangeText={(t) => setBillingDayText(t.replace(/[^\d]/g, '').slice(0, 2))}
-              keyboardType="number-pad"
-              returnKeyType="done"
-            />
-            <Text style={styles.dayUnit}>일</Text>
-            <Text style={styles.dayHint}>31일은 짧은 달에 말일로 처리돼요</Text>
-          </View>
+          {isWeekly ? (
+            <View style={styles.chips}>
+              {WEEKDAY_NAMES.map((name, i) => (
+                <Chip
+                  key={name}
+                  label={name}
+                  selected={weekday === i + 1}
+                  onPress={() => setWeekday(i + 1)}
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.dayRow}>
+              <TextInput
+                style={[inputStyle, styles.dayInput]}
+                value={billingDayText}
+                onChangeText={(t) => setBillingDayText(t.replace(/[^\d]/g, '').slice(0, 2))}
+                keyboardType="number-pad"
+                returnKeyType="done"
+              />
+              <Text style={styles.dayUnit}>일</Text>
+              <Text style={styles.dayHint}>31일은 짧은 달에 말일로 처리돼요</Text>
+            </View>
+          )}
         </Field>
 
         <Field

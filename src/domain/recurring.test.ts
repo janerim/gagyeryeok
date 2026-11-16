@@ -9,6 +9,7 @@ import {
   occurrencesBetween,
   scheduleLabel,
   scheduledByDate,
+  startAfterCycleChange,
 } from './recurring';
 import type { Recurring } from '@/types';
 
@@ -242,6 +243,44 @@ describe('backdatedStart', () => {
     expect(
       dueOccurrences({ cycle: 'MONTHLY', billingDay: 1, startDate, endDate: null }, '2026-11-03', [])
     ).toEqual(['2026-11-01']);
+  });
+});
+
+describe('startAfterCycleChange', () => {
+  const today = '2026-11-16'; // 월요일
+  const prev = { cycle: 'MONTHLY' as const, startDate: '2026-01-25' };
+  // 1월부터 매월 25일에 기록된 거래
+  const generated = occurrencesBetween({ ...monthly(25), startDate: prev.startDate }, prev.startDate, today);
+
+  it('시작일을 그대로 두고 매월 → 매주로 바꾸면 지난 주가 한꺼번에 만들어진다 (막으려는 상황)', () => {
+    const due = dueOccurrences(
+      { cycle: 'WEEKLY', billingDay: 1, startDate: prev.startDate, endDate: null },
+      today,
+      generated
+    );
+    expect(due.length).toBeGreaterThan(30);
+  });
+
+  it('더 촘촘한 주기로 바꾸면 시작일을 오늘로 옮겨 앞으로만 기록한다', () => {
+    const startDate = startAfterCycleChange(prev, 'WEEKLY', today);
+    expect(startDate).toBe(today);
+    expect(
+      dueOccurrences({ cycle: 'WEEKLY', billingDay: 1, startDate, endDate: null }, today, generated)
+    ).toEqual([today]);
+    expect(
+      dueOccurrences({ cycle: 'WEEKLY', billingDay: 5, startDate, endDate: null }, today, generated)
+    ).toEqual([]);
+    expect(startAfterCycleChange({ cycle: 'YEARLY', startDate: '2024-03-05' }, 'MONTHLY', today)).toBe(today);
+  });
+
+  it('같은 주기나 더 성긴 주기로 바꾸면 그대로', () => {
+    expect(startAfterCycleChange(prev, 'MONTHLY', today)).toBe(prev.startDate);
+    expect(startAfterCycleChange(prev, 'YEARLY', today)).toBe(prev.startDate);
+    expect(startAfterCycleChange({ cycle: 'WEEKLY', startDate: '2026-01-05' }, 'MONTHLY', today)).toBe('2026-01-05');
+  });
+
+  it('시작일이 아직 안 왔으면 그대로', () => {
+    expect(startAfterCycleChange({ cycle: 'MONTHLY', startDate: '2026-12-01' }, 'WEEKLY', today)).toBe('2026-12-01');
   });
 });
 

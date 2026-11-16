@@ -15,6 +15,7 @@ import {
   dueOccurrences,
   nextOccurrence,
   scheduleLabel,
+  startAfterCycleChange,
   WEEKDAY_NAMES,
 } from '@/domain/recurring';
 import { useKeyboardInset } from '@/hooks/useKeyboardInset';
@@ -79,6 +80,15 @@ export default function RecurringFormScreen() {
     setType(t);
     setCategoryId(null); // 지출/수입 카테고리가 다르므로 초기화
   };
+
+  // 수정에서 더 촘촘한 주기로 바꾸면 지난 주기가 한꺼번에 기록되므로 시작일을 오늘로 옮긴다
+  const changeCycle = (c: RecurringCycle) => {
+    if (c === cycle) return;
+    setCycle(c);
+    if (existing) setStartDate(startAfterCycleChange(existing, c, today));
+  };
+  const startMoved =
+    !!existing && startDate === today && startAfterCycleChange(existing, cycle, today) !== existing.startDate;
 
   useEffect(() => {
     if (!existing) return;
@@ -308,7 +318,7 @@ export default function RecurringFormScreen() {
                 key={c.key}
                 label={c.label}
                 selected={c.key === cycle}
-                onPress={() => setCycle(c.key)}
+                onPress={() => changeCycle(c.key)}
               />
             ))}
           </View>
@@ -362,6 +372,11 @@ export default function RecurringFormScreen() {
             <Text style={styles.previewSub}>
               시작일 이후 {dayLabel}이 되면 앱을 열 때 자동으로 기록돼요.
             </Text>
+            {startMoved && (
+              <Text style={styles.previewSub}>
+                주기를 바꿔 시작일을 오늘로 옮겼어요. 지난 날짜도 기록하려면 시작일을 앞당겨 주세요.
+              </Text>
+            )}
             {source && (
               <Text style={styles.previewSub}>
                 {format(parseISO(source.date), 'M월 d일')} 거래는 이 자동이체에 연결돼요.

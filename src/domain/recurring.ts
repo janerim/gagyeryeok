@@ -179,3 +179,20 @@ export function backdatedStart(
       : billingDate(Number(today.slice(0, 4)), Number(today.slice(5, 7)), r.billingDay);
   return billing < today ? billing : startDate;
 }
+
+const CYCLE_RANK: Record<Recurring['cycle'], number> = { YEARLY: 0, MONTHLY: 1, WEEKLY: 2 };
+
+/**
+ * 이미 등록한 자동이체의 주기를 바꿀 때의 시작일.
+ * 더 촘촘한 주기(매년 → 매월·매주, 매월 → 매주)로 바꾸면 지난 시작일부터의 빈 주기가
+ * 한꺼번에 거래로 만들어지므로, 시작일이 지났으면 오늘로 옮겨 앞으로만 적용한다.
+ * 그 밖에는 원래 시작일 그대로 (매년은 시작일의 월이 출금 월이라 건드리지 않는다).
+ */
+export function startAfterCycleChange(
+  prev: Pick<Recurring, 'cycle' | 'startDate'>,
+  cycle: Recurring['cycle'],
+  today: string
+): string {
+  const finer = CYCLE_RANK[cycle] > CYCLE_RANK[prev.cycle];
+  return finer && prev.startDate < today ? today : prev.startDate;
+}

@@ -1,4 +1,4 @@
-import type { AccountType, TransactionType } from '@/types';
+import type { AccountType, Necessity, TransactionType } from '@/types';
 
 export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   CHECKING: '입출금',
@@ -17,3 +17,9 @@ export const TX_TYPE_LABELS: Record<TransactionType, string> = {
 };
 
 export const TX_TYPES: TransactionType[] = ['EXPENSE', 'INCOME', 'TRANSFER'];
+
+export const NECESSITIES: Necessity[] = ['NEEDED', 'IMPULSE'];
+export const NECESSITY_LABELS: Record<Necessity, string> = {
+  NEEDED: '필수',
+  IMPULSE: '충동',
+};

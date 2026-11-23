@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
+import { NECESSITY_LABELS } from '@/constants/labels';
 import { formatWon } from '@/domain/money';
 import type { Category, Transaction } from '@/types';
 
@@ -29,7 +30,7 @@ const amountText = (t: Transaction) => {
 const amountColor = (t: Transaction) =>
   t.type === 'EXPENSE' ? Colors.expense : t.type === 'INCOME' ? Colors.income : Colors.transfer;
 
-/** 거래 한 줄: 카테고리(이체는 계좌 → 계좌)와 자동이체 배지, 계좌·메모, 금액 */
+/** 거래 한 줄: 카테고리(이체는 계좌 → 계좌)와 자동이체·필수/충동 배지, 계좌·메모, 리뷰, 금액 */
 export function TransactionRow({ tx, accountName, categoryById, onPress }: Props) {
   return (
     <Pressable
@@ -47,12 +48,26 @@ export function TransactionRow({ tx, accountName, categoryById, onPress }: Props
               <Text style={styles.badgeText}>자동이체</Text>
             </View>
           )}
+          {tx.necessity && (
+            <View style={[styles.badge, tx.necessity === 'IMPULSE' ? styles.impulse : styles.needed]}>
+              <Text
+                style={[styles.badgeText, tx.necessity === 'IMPULSE' ? styles.impulseText : styles.neededText]}
+              >
+                {NECESSITY_LABELS[tx.necessity]}
+              </Text>
+            </View>
+          )}
         </View>
         <Text style={styles.sub} numberOfLines={1}>
           {[tx.type === 'TRANSFER' ? null : accountName.get(tx.accountId) ?? '?', tx.memo]
             .filter(Boolean)
             .join(' · ')}
         </Text>
+        {tx.review && (
+          <Text style={styles.review} numberOfLines={1}>
+            “{tx.review}”
+          </Text>
+        )}
       </View>
       <Text style={[styles.amount, { color: amountColor(tx) }]}>{amountText(tx)}</Text>
     </Pressable>
@@ -81,6 +96,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryLight,
   },
   badgeText: { fontSize: 11, fontWeight: '700', color: Colors.primaryDark },
+  needed: { backgroundColor: Colors.surface },
+  neededText: { color: Colors.textSecondary },
+  impulse: { backgroundColor: Colors.impulseLight },
+  impulseText: { color: Colors.impulse },
   sub: { marginTop: 2, fontSize: 12, color: Colors.textSecondary },
+  review: { marginTop: 2, fontSize: 12, fontStyle: 'italic', color: Colors.textSecondary },
   amount: { fontSize: 16, fontWeight: '700', marginLeft: 12 },
 });

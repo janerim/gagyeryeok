@@ -38,6 +38,15 @@ export function recurringExpense(txs: Pick<Transaction, 'type' | 'amount' | 'rec
   );
 }
 
+/** 충동 구매로 표시한 지출의 합계와 건수 */
+export function impulseExpense(txs: Pick<Transaction, 'type' | 'amount' | 'necessity'>[]): {
+  amount: number;
+  count: number;
+} {
+  const hit = txs.filter((t) => t.type === 'EXPENSE' && t.necessity === 'IMPULSE');
+  return { amount: hit.reduce((sum, t) => sum + t.amount, 0), count: hit.length };
+}
+
 export type CategoryShare = {
   categoryId: string | null; // 카테고리 없는 지출은 null
   amount: number;

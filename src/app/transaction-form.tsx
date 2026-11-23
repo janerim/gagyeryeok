@@ -11,7 +11,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { format } from 'date-fns';
 import { Colors } from '@/constants/colors';
-import { TX_TYPES, TX_TYPE_LABELS } from '@/constants/labels';
+import { NECESSITIES, NECESSITY_LABELS, TX_TYPES, TX_TYPE_LABELS } from '@/constants/labels';
 import { AmountInput } from '@/components/common/AmountInput';
 import { Chip } from '@/components/common/Chip';
 import { DateStepper } from '@/components/common/DateStepper';
@@ -29,7 +29,7 @@ import { selectVisibleAccounts, useAccountStore } from '@/store/accountStore';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useRecurringStore } from '@/store/recurringStore';
 import { useTransactionStore } from '@/store/transactionStore';
-import type { Account, TransactionInput, TransactionType } from '@/types';
+import type { Account, Necessity, TransactionInput, TransactionType } from '@/types';
 
 const TYPE_COLOR: Record<TransactionType, string> = {
   EXPENSE: Colors.expense,
@@ -53,6 +53,9 @@ export default function TransactionFormScreen() {
   const [toAccountId, setToAccountId] = useState<string | null>(null);
   const [date, setDate] = useState(initialDate ?? format(new Date(), 'yyyy-MM-dd'));
   const [memo, setMemo] = useState('');
+  // 지출을 돌아보는 표시(필수/충동)와 한 줄 리뷰. 지출에만 저장된다
+  const [necessity, setNecessity] = useState<Necessity | null>(null);
+  const [review, setReview] = useState('');
   const [saving, setSaving] = useState(false);
   const [recurringId, setRecurringId] = useState<string | null>(null);
   const [linkPicker, setLinkPicker] = useState(false);
@@ -80,6 +83,8 @@ export default function TransactionFormScreen() {
       setToAccountId(tx.toAccountId);
       setDate(tx.date);
       setMemo(tx.memo ?? '');
+      setNecessity(tx.necessity);
+      setReview(tx.review ?? '');
       setRecurringId(tx.recurringId);
     });
   }, [id]);
@@ -114,6 +119,8 @@ export default function TransactionFormScreen() {
       toAccountId: type === 'TRANSFER' ? toAccountId : null,
       categoryId: type === 'TRANSFER' ? null : categoryId,
       memo: memo.trim() || null,
+      necessity: type === 'EXPENSE' ? necessity : null,
+      review: type === 'EXPENSE' ? review.trim() || null : null,
     };
     setSaving(true);
     try {
@@ -278,6 +285,32 @@ export default function TransactionFormScreen() {
         <Field label="날짜" inline>
           <DateStepper value={date} onChange={setDate} />
         </Field>
+
+        {type === 'EXPENSE' && (
+          <Field label="구매 리뷰 (선택)">
+            <View style={styles.chips}>
+              {NECESSITIES.map((n) => (
+                <Chip
+                  key={n}
+                  label={`${NECESSITY_LABELS[n]} 구매`}
+                  selected={n === necessity}
+                  // 다시 누르면 표시를 지운다
+                  onPress={() => setNecessity(n === necessity ? null : n)}
+                  color={n === 'IMPULSE' ? Colors.impulse : Colors.primary}
+                />
+              ))}
+            </View>
+            <TextInput
+              style={inputStyle}
+              value={review}
+              onChangeText={setReview}
+              placeholder="한 줄 리뷰. 예: 없어도 됐다, 잘 샀다"
+              placeholderTextColor={Colors.textSecondary}
+              returnKeyType="done"
+              maxLength={100}
+            />
+          </Field>
+        )}
       </ScrollView>
 
       <FormFooter

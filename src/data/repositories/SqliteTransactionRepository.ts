@@ -1,7 +1,7 @@
 import { randomUUID } from 'expo-crypto';
 import { getDB, nowISO } from '@/data/db/database';
 import { EMPTY_SUMS, type AccountSums } from '@/domain/balance';
-import type { Transaction, TransactionInput, TransactionType } from '@/types';
+import type { Necessity, Transaction, TransactionInput, TransactionType } from '@/types';
 import type { TransactionRepository } from './TransactionRepository';
 
 type Row = {
@@ -14,6 +14,8 @@ type Row = {
   category_id: string | null;
   memo: string | null;
   recurring_id: string | null;
+  necessity: Necessity | null;
+  review: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -29,10 +31,18 @@ const toTransaction = (r: Row): Transaction => ({
   categoryId: r.category_id,
   memo: r.memo,
   recurringId: r.recurring_id,
+  necessity: r.necessity,
+  review: r.review,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
   deletedAt: r.deleted_at,
 });
+
+/** 저장할 리뷰 값. 리뷰는 지출에만 남긴다 */
+const reviewOf = (input: TransactionInput) =>
+  input.type === 'EXPENSE'
+    ? { necessity: input.necessity ?? null, review: input.review?.trim() || null }
+    : { necessity: null, review: null };
 
 export class SqliteTransactionRepository implements TransactionRepository {
   async listByMonth(month: string): Promise<Transaction[]> {
@@ -60,10 +70,12 @@ export class SqliteTransactionRepository implements TransactionRepository {
     const db = await getDB();
     const now = nowISO();
     const id = randomUUID();
+    const { necessity, review } = reviewOf(input);
     await db.runAsync(
       `INSERT INTO "transaction"
-         (id, type, amount, date, account_id, to_account_id, category_id, memo, recurring_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, type, amount, date, account_id, to_account_id, category_id, memo, recurring_id,
+          necessity, review, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       input.type,
       input.amount,
@@ -73,6 +85,8 @@ export class SqliteTransactionRepository implements TransactionRepository {
       input.categoryId,
       input.memo,
       recurringId ?? null,
+      necessity,
+      review,
       now,
       now
     );
@@ -80,6 +94,8 @@ export class SqliteTransactionRepository implements TransactionRepository {
       id,
       ...input,
       recurringId: recurringId ?? null,
+      necessity,
+      review,
       createdAt: now,
       updatedAt: now,
       deletedAt: null,
@@ -88,10 +104,16 @@ export class SqliteTransactionRepository implements TransactionRepository {
 
   async update(id: string, input: TransactionInput): Promise<void> {
     const db = await getDB();
+    // 리뷰를 넘기지 않은 수정(자동이체가 거래를 맞출 때)은 기존 리뷰를 둔다. 단 지출이 아니게 되면 지운다
+    const keep = input.necessity === undefined && input.review === undefined && input.type === 'EXPENSE';
+    const { necessity, review } = reviewOf(input);
     await db.runAsync(
       `UPDATE "transaction"
        SET type = ?, amount = ?, date = ?, account_id = ?, to_account_id = ?,
-           category_id = ?, memo = ?, updated_at = ?
+           category_id = ?, memo = ?,
+           necessity = CASE WHEN ? THEN necessity ELSE ? END,
+           review = CASE WHEN ? THEN review ELSE ? END,
+           updated_at = ?
        WHERE id = ?`,
       input.type,
       input.amount,
@@ -100,6 +122,10 @@ export class SqliteTransactionRepository implements TransactionRepository {
       input.toAccountId,
       input.categoryId,
       input.memo,
+      keep ? 1 : 0,
+      necessity,
+      keep ? 1 : 0,
+      review,
       nowISO(),
       id
     );

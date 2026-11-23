@@ -121,4 +121,11 @@ export const MIGRATIONS: ((db: SQLiteDatabase) => Promise<void>)[] = [
   async (db) => {
     await db.execAsync('ALTER TABLE "transaction" ADD COLUMN unlinked_recurring_id TEXT');
   },
+  // v5: 지출 리뷰. necessity 는 'NEEDED'(필수) / 'IMPULSE'(충동) / NULL(표시 안 함), review 는 한 줄 메모
+  async (db) => {
+    await db.execAsync(`
+      ALTER TABLE "transaction" ADD COLUMN necessity TEXT;
+      ALTER TABLE "transaction" ADD COLUMN review TEXT;
+    `);
+  },
 ];

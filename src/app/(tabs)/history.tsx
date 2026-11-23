@@ -77,7 +77,7 @@ export default function HistoryScreen() {
         if (accountFilter && t.accountId !== accountFilter && t.toAccountId !== accountFilter)
           return false;
         if (categoryFilter && t.categoryId !== categoryFilter) return false;
-        if (keyword && !(t.memo ?? '').toLowerCase().includes(keyword)) return false;
+        if (keyword && !`${t.memo ?? ''}\n${t.review ?? ''}`.toLowerCase().includes(keyword)) return false;
         return true;
       }),
     [items, typeFilter, accountFilter, categoryFilter, keyword]

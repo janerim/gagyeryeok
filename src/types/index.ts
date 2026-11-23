@@ -40,6 +40,9 @@ export type CategoryInput = {
   icon: string | null;
 };
 
+/** 지출을 돌아보는 표시: 꼭 필요했던 구매 / 충동 구매. 표시하지 않았으면 null */
+export type Necessity = 'NEEDED' | 'IMPULSE';
+
 export type Transaction = Audit & {
   id: string;
   type: TransactionType;
@@ -50,6 +53,8 @@ export type Transaction = Audit & {
   categoryId: string | null; // TRANSFER는 null
   memo: string | null;
   recurringId: string | null;
+  necessity: Necessity | null; // 지출만
+  review: string | null; // 지출만. 구매를 돌아본 한 줄
 };
 
 export type TransactionInput = {
@@ -60,6 +65,9 @@ export type TransactionInput = {
   toAccountId: string | null;
   categoryId: string | null;
   memo: string | null;
+  /** 생략하면 수정할 때 기존 값을 그대로 둔다 (자동이체가 거래를 고칠 때 리뷰를 지우지 않도록) */
+  necessity?: Necessity | null;
+  review?: string | null;
 };
 
 export type RecurringType = 'EXPENSE' | 'INCOME' | 'TRANSFER';

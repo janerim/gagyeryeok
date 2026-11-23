@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dailyTotals, expenseByCategory, sumTotals, recurringExpense } from './stats';
+import { dailyTotals, expenseByCategory, sumTotals, impulseExpense, recurringExpense } from './stats';
 
 const tx = (type: 'INCOME' | 'EXPENSE' | 'TRANSFER', amount: number, date = '2026-11-03') => ({
   type,
@@ -80,5 +80,23 @@ describe('recurringExpense', () => {
 
   it('없으면 0', () => {
     expect(recurringExpense([])).toBe(0);
+  });
+});
+
+describe('impulseExpense', () => {
+  it('충동 구매로 표시한 지출만 합계와 건수를 센다', () => {
+    expect(
+      impulseExpense([
+        { type: 'EXPENSE', amount: 32000, necessity: 'IMPULSE' },
+        { type: 'EXPENSE', amount: 8000, necessity: 'IMPULSE' },
+        { type: 'EXPENSE', amount: 50000, necessity: 'NEEDED' },
+        { type: 'EXPENSE', amount: 4500, necessity: null },
+        { type: 'INCOME', amount: 100000, necessity: null },
+      ])
+    ).toEqual({ amount: 40000, count: 2 });
+  });
+
+  it('없으면 0', () => {
+    expect(impulseExpense([])).toEqual({ amount: 0, count: 0 });
   });
 });

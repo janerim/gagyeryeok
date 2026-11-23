@@ -15,7 +15,7 @@ export const Colors = {
   sunday: '#E06257',
   todayBg: '#E3F3EE',
   danger: '#E06257',
-  // 충동 구매 표시. 지출 빨강과 헷갈리지 않게 주황
-  impulse: '#B4690E',
-  impulseLight: '#FBEBD3',
+  // 충동 구매 표시. 주의하라는 뜻의 빨강 계열, 지출 금액의 빨강보다 어둡고 덜 쨍하게
+  impulse: '#B5463C',
+  impulseLight: '#F9E3E0',
 } as const;

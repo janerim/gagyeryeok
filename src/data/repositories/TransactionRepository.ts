@@ -4,6 +4,8 @@ import type { Transaction, TransactionInput, TransactionType } from '@/types';
 export interface TransactionRepository {
   /** month: YYYY-MM. 삭제 제외, 날짜 내림차순 */
   listByMonth(month: string): Promise<Transaction[]>;
+  /** from~to(YYYY-MM-DD, 양끝 포함). 삭제 제외, 날짜 오름차순 */
+  listBetween(from: string, to: string): Promise<Transaction[]>;
   findById(id: string): Promise<Transaction | null>;
   /** recurringId: 자동이체로 만든 거래면 그 자동이체 id */
   create(input: TransactionInput, recurringId?: string): Promise<Transaction>;

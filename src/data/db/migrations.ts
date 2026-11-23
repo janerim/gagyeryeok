@@ -128,4 +128,17 @@ export const MIGRATIONS: ((db: SQLiteDatabase) => Promise<void>)[] = [
       ALTER TABLE "transaction" ADD COLUMN review TEXT;
     `);
   },
+  // v6: 주간·월간 회고 메모. period_key 는 주간이면 그 주 월요일(YYYY-MM-DD), 월간이면 YYYY-MM
+  async (db) => {
+    await db.execAsync(`
+      CREATE TABLE retrospective (
+        period_type TEXT NOT NULL,
+        period_key  TEXT NOT NULL,
+        note        TEXT NOT NULL,
+        created_at  TEXT NOT NULL,
+        updated_at  TEXT NOT NULL,
+        PRIMARY KEY (period_type, period_key)
+      );
+    `);
+  },
 ];

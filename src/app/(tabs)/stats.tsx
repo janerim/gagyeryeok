@@ -45,9 +45,26 @@ export default function StatsScreen() {
           />
         }
         right={
-          <Pressable onPress={() => setMonth(format(new Date(), 'yyyy-MM'))} style={hb.btn}>
-            <Text style={hb.text}>이번 달</Text>
-          </Pressable>
+          <>
+            <Pressable onPress={() => setMonth(format(new Date(), 'yyyy-MM'))} style={hb.btn}>
+              <Text style={hb.text}>이번 달</Text>
+            </Pressable>
+            {/* 이번 달을 보고 있으면 이번 주 회고로, 지난달이면 그 달의 월간 회고로 */}
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/retro',
+                  params:
+                    month === format(new Date(), 'yyyy-MM')
+                      ? { type: 'WEEK' }
+                      : { type: 'MONTH', date: `${month}-01` },
+                })
+              }
+              style={[hb.btn, hb.btnPrimary]}
+            >
+              <Text style={[hb.text, { color: '#fff' }]}>회고</Text>
+            </Pressable>
+          </>
         }
       />
       <MonthPickerSheet

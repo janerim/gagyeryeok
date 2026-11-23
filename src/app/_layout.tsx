@@ -70,6 +70,7 @@ export default function RootLayout() {
             options={{ presentation: 'modal', headerShown: true, title: '자동이체' }}
           />
           <Stack.Screen name="recurring" options={{ headerShown: true, title: '자동이체' }} />
+          <Stack.Screen name="retro" options={{ headerShown: true, title: '회고' }} />
           <Stack.Screen
             name="settings/index"
             options={{ headerShown: true, title: '설정' }}

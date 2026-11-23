@@ -70,6 +70,17 @@ export type TransactionInput = {
   review?: string | null;
 };
 
+/** 회고 주기. 주간은 월요일~일요일 */
+export type RetroPeriodType = 'WEEK' | 'MONTH';
+
+/** 한 주·한 달을 돌아보며 남긴 메모. 주기마다 하나 */
+export type Retrospective = {
+  periodType: RetroPeriodType;
+  periodKey: string; // WEEK: 그 주 월요일(YYYY-MM-DD) / MONTH: YYYY-MM
+  note: string;
+  updatedAt: string;
+};
+
 export type RecurringType = 'EXPENSE' | 'INCOME' | 'TRANSFER';
 export type RecurringCycle = 'WEEKLY' | 'MONTHLY' | 'YEARLY';
 

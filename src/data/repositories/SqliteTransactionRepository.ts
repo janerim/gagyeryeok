@@ -57,6 +57,18 @@ export class SqliteTransactionRepository implements TransactionRepository {
     return rows.map(toTransaction);
   }
 
+  async listBetween(from: string, to: string): Promise<Transaction[]> {
+    const db = await getDB();
+    const rows = await db.getAllAsync<Row>(
+      `SELECT * FROM "transaction"
+       WHERE deleted_at IS NULL AND date BETWEEN ? AND ?
+       ORDER BY date, created_at`,
+      from,
+      to
+    );
+    return rows.map(toTransaction);
+  }
+
   async findById(id: string): Promise<Transaction | null> {
     const db = await getDB();
     const row = await db.getFirstAsync<Row>(

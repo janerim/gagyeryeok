@@ -2,11 +2,13 @@ import type { AccountRepository } from './AccountRepository';
 import type { BackupRepository } from './BackupRepository';
 import type { CategoryRepository } from './CategoryRepository';
 import type { RecurringRepository } from './RecurringRepository';
+import type { RetrospectiveRepository } from './RetrospectiveRepository';
 import type { TransactionRepository } from './TransactionRepository';
 import { SqliteAccountRepository } from './SqliteAccountRepository';
 import { SqliteBackupRepository } from './SqliteBackupRepository';
 import { SqliteCategoryRepository } from './SqliteCategoryRepository';
 import { SqliteRecurringRepository } from './SqliteRecurringRepository';
+import { SqliteRetrospectiveRepository } from './SqliteRetrospectiveRepository';
 import { SqliteTransactionRepository } from './SqliteTransactionRepository';
 
 /**
@@ -18,12 +20,14 @@ export const repositories: {
   backup: BackupRepository;
   category: CategoryRepository;
   recurring: RecurringRepository;
+  retrospective: RetrospectiveRepository;
   transaction: TransactionRepository;
 } = {
   account: new SqliteAccountRepository(),
   backup: new SqliteBackupRepository(),
   category: new SqliteCategoryRepository(),
   recurring: new SqliteRecurringRepository(),
+  retrospective: new SqliteRetrospectiveRepository(),
   transaction: new SqliteTransactionRepository(),
 };
 

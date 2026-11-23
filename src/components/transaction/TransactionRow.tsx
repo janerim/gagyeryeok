@@ -1,8 +1,10 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { format, getISODay, parseISO } from 'date-fns';
 import { Colors } from '@/constants/colors';
 import { NECESSITY_LABELS } from '@/constants/labels';
 import { formatWon } from '@/domain/money';
+import { WEEKDAY_NAMES } from '@/domain/recurring';
 import type { Category, Transaction } from '@/types';
 
 type Props = {
@@ -10,6 +12,8 @@ type Props = {
   accountName: Map<string, string>;
   categoryById: Map<string, Category>;
   onPress: () => void;
+  /** 날짜가 섞인 목록(회고)에서 둘째 줄 앞에 `11/20 (금)` 을 붙인다 */
+  showDate?: boolean;
 };
 
 const describe = (t: Transaction, accountName: Map<string, string>, categoryById: Map<string, Category>) => {
@@ -18,6 +22,11 @@ const describe = (t: Transaction, accountName: Map<string, string>, categoryById
   }
   const c = t.categoryId ? categoryById.get(t.categoryId) : undefined;
   return c ? `${c.icon ? c.icon + ' ' : ''}${c.name}` : '카테고리 없음';
+};
+
+const dateLabel = (date: string) => {
+  const d = parseISO(date);
+  return `${format(d, 'M/d')} (${WEEKDAY_NAMES[getISODay(d) - 1]})`;
 };
 
 const amountText = (t: Transaction) => {
@@ -31,7 +40,7 @@ const amountColor = (t: Transaction) =>
   t.type === 'EXPENSE' ? Colors.expense : t.type === 'INCOME' ? Colors.income : Colors.transfer;
 
 /** 거래 한 줄: 카테고리(이체는 계좌 → 계좌)와 자동이체·필수/충동 배지, 계좌·메모, 리뷰, 금액 */
-export function TransactionRow({ tx, accountName, categoryById, onPress }: Props) {
+export function TransactionRow({ tx, accountName, categoryById, onPress, showDate = false }: Props) {
   return (
     <Pressable
       onPress={onPress}
@@ -59,7 +68,11 @@ export function TransactionRow({ tx, accountName, categoryById, onPress }: Props
           )}
         </View>
         <Text style={styles.sub} numberOfLines={1}>
-          {[tx.type === 'TRANSFER' ? null : accountName.get(tx.accountId) ?? '?', tx.memo]
+          {[
+            showDate ? dateLabel(tx.date) : null,
+            tx.type === 'TRANSFER' ? null : accountName.get(tx.accountId) ?? '?',
+            tx.memo,
+          ]
             .filter(Boolean)
             .join(' · ')}
         </Text>
